@@ -1,23 +1,22 @@
-mod logger;
-mod types;
-mod state;
-mod db;
 mod api;
+mod db;
+mod logger;
+mod state;
+mod types;
 
+use crate::state::AppState;
 use axum::{
-    Router,
     routing::{get, post},
+    Router,
 };
-use parking_lot::RwLock;
-use std::sync::Arc;
+use std::net::SocketAddr; // adjust if crate name differs
 
-use crate::{api::{
-    AppState, add_friend, create_expense, create_group, get_group_balances, get_user_balances,
-    register, try_load_state,
-}, db::DataBase};
+use crate::api::{
+    add_friend, create_expense, create_group, get_group_balances, get_user_balances, register_user,
+};
 
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
     logger::init();
 
     // Connect to database
@@ -25,22 +24,10 @@ async fn main() {
     let group_db = db::GroupFileDB::connect("group_db.json").expect("Cannot open group db");
     let expense_db = db::ExpenseFileDB::connect("expense_db.json").expect("Cannot open expense db");
 
-    // persist file path (optional)
-    let persist_path = Some("kvittis_state.json".to_string());
-
-    // attempt load
-    let loaded = persist_path
-        .as_ref()
-        .and_then(|p| try_load_state(p))
-        .unwrap_or_default();
-
-    let state = AppState {
-        data: Arc::new(RwLock::new(loaded)),
-        persist_path,
-    };
+    let state = AppState::new(user_db, group_db, expense_db);
 
     let app = Router::new()
-        .route("/register", post(register))
+        .route("/register", post(register_user))
         .route("/friend", post(add_friend))
         .route("/group", post(create_group))
         .route("/expense", post(create_expense))
@@ -48,9 +35,21 @@ async fn main() {
         .route("/group_balances/{group_id}", get(get_group_balances))
         .with_state(state.clone());
 
-    let listener = tokio::net::TcpListener::bind("0.0.0.0:3000").await.unwrap();
-    tracing::info!("listening on {}", "0.0.0.0:3000");
-    axum::serve(listener, app.into_make_service())
-        .await
-        .unwrap();
+    let addr: SocketAddr = ([0, 0, 0, 0], 3000).into();
+    let listener = tokio::net::TcpListener::bind(addr).await?;
+    println!("Listening on {addr}");
+    let mut shutdown_state = state.clone();
+
+    axum::serve(listener, app)
+        .with_graceful_shutdown(async move {
+            let _ = tokio::signal::ctrl_c().await;
+            if let Err(e) = shutdown_state.commit_all() {
+                eprintln!("Failed to commit databases: {e}");
+            } else {
+                println!("Databases committed (Ctrl+C).");
+            }
+        })
+        .await?;
+
+    Ok(())
 }

@@ -1,4 +1,6 @@
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
+use serde::{Deserialize, Serialize};
+use tracing::debug;
 use std::{
     collections::BTreeMap,
     io::{Read, Write},
@@ -6,30 +8,55 @@ use std::{
     str::FromStr,
 };
 
-use crate::types::{Expense, ExpenseId, Group, GroupId, User, UserId};
+use crate::types::{ExpenseId, GroupId, UserId};
 
+// Object-safe base trait (no Sized)
 pub trait DataBase {
-    fn connect(path: &str) -> Result<impl DataBase>;
-    fn disconnect(self) -> Result<()>;
     fn commit(&self) -> Result<()>;
 }
 
+// Specialised traits (object-safe)
+pub trait UserDB: DataBase + Send + Sync {
+    fn register(&mut self, user: UserRow) -> Result<&UserRow>;
+    fn get_user(&self, id: UserId) -> Result<&UserRow>;
+    fn update_user(&mut self, user: UserRow) -> Result<&UserRow>;
+}
+
+pub trait GroupDB: DataBase + Send + Sync {
+    // group operations later
+}
+
+pub trait ExpenseDB: DataBase + Send + Sync {
+    // expense operations later
+}
+
+#[derive(Serialize, Deserialize, Clone)]
 pub struct UserRow {
     id: UserId,
     username: String,
     friends: Vec<UserId>,
 }
 
-impl From<User> for UserRow {
-    fn from(value: User) -> Self {
+impl UserRow {
+    pub fn new(id: UserId, username: String, friends: Vec<UserId>) -> Self {
         Self {
-            id: value.id,
-            username: value.username,
-            friends: value.friends,
+            id,
+            username,
+            friends,
         }
+    }
+    pub fn id(&self) -> UserId {
+        self.id
+    }
+    pub fn username(&self) -> &str {
+        &self.username
+    }
+    pub fn friends(&self) -> &[UserId] {
+        &self.friends
     }
 }
 
+#[derive(Serialize, Deserialize, Clone)]
 pub struct GroupRow {
     id: GroupId,
     name: String,
@@ -37,17 +64,18 @@ pub struct GroupRow {
     members: Vec<UserId>,
 }
 
-impl From<Group> for GroupRow {
-    fn from(value: Group) -> Self {
+impl GroupRow {
+    pub fn new(id: GroupId, name: String, owner_id: UserId, members: Vec<UserId>) -> Self {
         Self {
-            id: value.id,
-            name: value.name,
-            owner_id: value.owner_id,
-            members: value.members,
+            id,
+            name,
+            owner_id,
+            members,
         }
     }
 }
 
+#[derive(Serialize, Deserialize, Clone)]
 pub struct ExpenseRow {
     id: ExpenseId,
     payer: UserId,
@@ -58,31 +86,40 @@ pub struct ExpenseRow {
     timestamp_ms: i64,
 }
 
-impl From<Expense> for ExpenseRow {
-    fn from(value: Expense) -> Self {
+impl ExpenseRow {
+    pub fn new(
+        id: ExpenseId,
+        payer: UserId,
+        participants: Vec<UserId>,
+        amount: f64,
+        description: Option<String>,
+        group_id: Option<GroupId>,
+        timestamp_ms: i64,
+    ) -> Self {
         Self {
-            id: value.id,
-            payer: value.payer,
-            participants: value.participants,
-            amount: value.amount,
-            description: value.description,
-            group_id: value.group_id,
-            timestamp_ms: value.timestamp_ms,
+            id,
+            payer,
+            participants,
+            amount,
+            description,
+            group_id,
+            timestamp_ms,
         }
     }
 }
 
 pub struct UserFileDB {
     path: PathBuf,
-    data: BTreeMap<UserId, User>,
+    data: BTreeMap<UserId, UserRow>,
 }
 
-impl DataBase for UserFileDB {
-    fn connect(path: &str) -> Result<impl DataBase> {
+impl UserFileDB {
+    pub fn connect(path: &str) -> Result<Self> {
         let path = PathBuf::from_str(path)?;
         match read_file_db(&path)? {
-            Some(data) => {
-                let data = serde_json::from_slice(&data)?;
+            Some(raw) => {
+                debug!("Read file UserDB");
+                let data = serde_json::from_slice(&raw)?;
                 Ok(Self { path, data })
             }
             None => Ok(Self {
@@ -91,62 +128,90 @@ impl DataBase for UserFileDB {
             }),
         }
     }
-
-    fn disconnect(self) -> Result<()> {
+    pub fn disconnect(self) -> Result<()> {
         self.commit()
     }
+}
 
+impl DataBase for UserFileDB {
     fn commit(&self) -> Result<()> {
+        debug!("Commit database: UserDB");
         let data = serde_json::to_vec(&self.data)?;
-        let mut file = std::fs::OpenOptions::new().write(true).create(true).open(&self.path)?;
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(&self.path)?;
         file.write_all(&data)?;
         Ok(())
+    }
+}
+
+impl UserDB for UserFileDB {
+    fn register(&mut self, user: UserRow) -> Result<&UserRow> {
+        let id = user.id;
+        self.data.insert(id, user);
+        self.data.get(&id).ok_or(anyhow!("User not found"))
+    }
+    fn get_user(&self, id: UserId) -> Result<&UserRow> {
+        self.data.get(&id).ok_or(anyhow!("User not found"))
+    }
+    fn update_user(&mut self, user: UserRow) -> Result<&UserRow> {
+        let id = user.id;
+        self.data.insert(id, user);
+        self.data.get(&id).ok_or(anyhow!("User not found"))
     }
 }
 
 pub struct GroupFileDB {
     path: PathBuf,
-    data: BTreeMap<GroupId, Group>,
+    data: BTreeMap<GroupId, GroupRow>,
+}
+
+impl GroupFileDB {
+    pub fn connect(path: &str) -> Result<Self> {
+        let path = PathBuf::from_str(path)?;
+        match read_file_db(&path)? {
+            Some(raw) => {
+                let data = serde_json::from_slice(&raw)?;
+                Ok(Self { path, data })
+            }
+            None => Ok(Self {
+                path,
+                data: BTreeMap::new(),
+            }),
+        }
+    }
+    pub fn disconnect(self) -> Result<()> {
+        self.commit()
+    }
 }
 
 impl DataBase for GroupFileDB {
-    fn connect(path: &str) -> Result<impl DataBase> {
-        let path = PathBuf::from_str(path)?;
-        match read_file_db(&path)? {
-            Some(data) => {
-                let data = serde_json::from_slice(&data)?;
-                Ok(Self { path, data })
-            }
-            None => Ok(Self {
-                path,
-                data: BTreeMap::new(),
-            }),
-        }
-    }
-
-    fn disconnect(self) -> Result<()> {
-        self.commit()
-    }
-
     fn commit(&self) -> Result<()> {
+        debug!("Commit database: GroupDB");
         let data = serde_json::to_vec(&self.data)?;
-        let mut file = std::fs::OpenOptions::new().write(true).create(true).open(&self.path)?;
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(&self.path)?;
         file.write_all(&data)?;
         Ok(())
     }
 }
+
+impl GroupDB for GroupFileDB {}
 
 pub struct ExpenseFileDB {
     path: PathBuf,
-    data: BTreeMap<ExpenseId, Expense>,
+    data: BTreeMap<ExpenseId, ExpenseRow>,
 }
 
-impl DataBase for ExpenseFileDB {
-    fn connect(path: &str) -> Result<impl DataBase> {
+impl ExpenseFileDB {
+    pub fn connect(path: &str) -> Result<Self> {
         let path = PathBuf::from_str(path)?;
         match read_file_db(&path)? {
-            Some(data) => {
-                let data = serde_json::from_slice(&data)?;
+            Some(raw) => {
+                let data = serde_json::from_slice(&raw)?;
                 Ok(Self { path, data })
             }
             None => Ok(Self {
@@ -155,18 +220,25 @@ impl DataBase for ExpenseFileDB {
             }),
         }
     }
-
-    fn disconnect(self) -> Result<()> {
+    pub fn disconnect(self) -> Result<()> {
         self.commit()
     }
+}
 
+impl DataBase for ExpenseFileDB {
     fn commit(&self) -> Result<()> {
+        debug!("Commit database: ExpenseDB");
         let data = serde_json::to_vec(&self.data)?;
-        let mut file = std::fs::OpenOptions::new().write(true).create(true).open(&self.path)?;
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create(true)
+            .open(&self.path)?;
         file.write_all(&data)?;
         Ok(())
     }
 }
+
+impl ExpenseDB for ExpenseFileDB {}
 
 fn read_file_db(path: &Path) -> Result<Option<Vec<u8>>> {
     match std::fs::exists(path) {
