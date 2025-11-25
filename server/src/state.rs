@@ -3,8 +3,8 @@ use std::sync::Arc;
 use anyhow::Result;
 use parking_lot::RwLock;
 
-use crate::db::{ExpenseDB, GroupDB, UserDB, UserRow};
-use crate::types::{User, UserId};
+use crate::db::{ExpenseDB, ExpenseRow, GroupDB, GroupRow, UserDB, UserRow};
+use common::{Expense, Group, User, UserId};
 
 struct AppStateData {
     user_db: Box<dyn UserDB>,
@@ -44,7 +44,7 @@ impl AppState {
         }
     }
 
-    pub fn commit_all(&mut self) -> Result<()>{
+    pub fn commit_all(&mut self) -> Result<()> {
         let guard = self.data.write();
         guard.user_db.commit()?;
         guard.group_db.commit()?;
@@ -82,7 +82,7 @@ impl AppState {
 
 impl From<User> for UserRow {
     fn from(value: User) -> Self {
-        Self::new(value.id, value.username, value.friends)
+        UserRow::new(value.id, value.username, value.friends)
     }
 }
 
@@ -92,6 +92,51 @@ impl From<UserRow> for User {
             id: r.id(),
             username: r.username().to_owned(),
             friends: Vec::from(r.friends()),
+        }
+    }
+}
+
+impl From<Group> for GroupRow {
+    fn from(value: Group) -> Self {
+        GroupRow::new(value.id, value.name, value.owner_id, value.members)
+    }
+}
+
+impl From<GroupRow> for Group {
+    fn from(value: GroupRow) -> Self {
+        Group {
+            id: value.id(),
+            name: value.name().to_owned(),
+            owner_id: value.owner_id(),
+            members: value.members().to_owned(),
+        }
+    }
+}
+
+impl From<Expense> for ExpenseRow {
+    fn from(value: Expense) -> Self {
+        ExpenseRow::new(
+            value.id,
+            value.payer,
+            value.participants,
+            value.amount,
+            value.description,
+            value.group_id,
+            value.timestamp_ms,
+        )
+    }
+}
+
+impl From<ExpenseRow> for Expense {
+    fn from(value: ExpenseRow) -> Self {
+        Expense {
+            id: value.id(),
+            payer: value.payer(),
+            participants: value.participants().to_owned(),
+            amount: value.amount(),
+            description: value.description().cloned(),
+            group_id: value.group_id(),
+            timestamp_ms: value.timestamp_ms(),
         }
     }
 }

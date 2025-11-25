@@ -1,5 +1,3 @@
-use std::collections::HashMap;
-
 use axum::{
     Json,
     extract::{Path, State},
@@ -8,10 +6,10 @@ use axum::{
 use serde::{Deserialize, Serialize};
 use tracing::debug;
 use uuid::Uuid;
+use common::{UserId, GroupId, ExpenseId, User, Group, Expense};
 
 use crate::{
-    state::AppState,
-    types::{Expense, ExpenseId, Group, GroupId, User, UserId},
+    db::{ExpenseRow, GroupRow, UserDB, UserRow}, state::AppState
 };
 
 #[derive(Deserialize, Debug)]

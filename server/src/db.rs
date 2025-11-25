@@ -8,7 +8,7 @@ use std::{
     str::FromStr,
 };
 
-use crate::types::{ExpenseId, GroupId, UserId};
+use common::{ExpenseId, GroupId, UserId};
 
 // Object-safe base trait (no Sized)
 pub trait DataBase {
@@ -73,6 +73,22 @@ impl GroupRow {
             members,
         }
     }
+
+    pub fn id(&self) -> GroupId {
+        self.id
+    }
+
+    pub fn name(&self) -> &str {
+        &self.name
+    }
+
+    pub fn owner_id(&self) -> UserId {
+        self.owner_id
+    }
+
+    pub fn members(&self) -> &Vec<UserId> {
+        &self.members
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -105,6 +121,34 @@ impl ExpenseRow {
             group_id,
             timestamp_ms,
         }
+    }
+
+    pub fn id(&self) -> ExpenseId {
+        self.id
+    }
+
+    pub fn payer(&self) -> UserId {
+        self.payer
+    }
+
+    pub fn participants(&self) -> &Vec<UserId> {
+        &self.participants
+    }
+
+    pub fn amount(&self) -> f64 {
+        self.amount
+    }
+
+    pub fn description(&self) -> Option<&String> {
+        self.description.as_ref()
+    }
+
+    pub fn group_id(&self) -> Option<GroupId> {
+        self.group_id
+    }
+
+    pub fn timestamp_ms(&self) -> i64 {
+        self.timestamp_ms
     }
 }
 
