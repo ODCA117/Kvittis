@@ -161,30 +161,3 @@ pub async fn get_group_balances(
     debug!("get group balance: {:?}", group_id);
     json_not_implemented()
 }
-
-// fn compute_debts(
-//     expenses: &Vec<Expense>,
-//     filter_group: Option<GroupId>,
-// ) -> HashMap<(Uuid, Uuid), f64> {
-//     // map (from, to) => amount (from owes to)
-//     let mut map: HashMap<(Uuid, Uuid), f64> = HashMap::new();
-//     for exp in expenses.iter() {
-//         if let Some(gid) = filter_group {
-//             if exp.group_id != Some(gid) {
-//                 continue;
-//             }
-//         }
-//         if exp.participants.is_empty() {
-//             continue;
-//         }
-//
-//         let share = exp.amount / (exp.participants.len() as f64);
-//         for p in exp.participants.iter() {
-//             if *p == exp.payer {
-//                 continue;
-//             }
-//             *map.entry((*p, exp.payer)).or_default() += share;
-//         }
-//     }
-//     map
-// }
