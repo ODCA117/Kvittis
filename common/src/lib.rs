@@ -1,5 +1,5 @@
 use uuid::Uuid;
-mod api_types;
+pub mod api;
 
 pub type UserId = Uuid;
 pub type GroupId = Uuid;
@@ -30,4 +30,3 @@ pub struct Expense {
     pub group_id: Option<GroupId>,
     pub timestamp_ms: i64,
 }
-

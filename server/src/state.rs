@@ -59,8 +59,7 @@ impl AppState {
             id: stored.id(),
             username: stored.username().to_owned(),
             friends: Vec::from(stored.friends()),
-        }
-        .into())
+        })
     }
 
     pub fn get_user(&self, id: UserId) -> Result<User> {
@@ -68,15 +67,47 @@ impl AppState {
         guard.user_db.get_user(id).map(|u| (*u).clone().into())
     }
 
-    pub fn edit_user(&self, updated_user: User) -> Result<User> {
+    pub fn get_users(&self) -> Vec<User> {
+        let guard = self.data.read();
+        guard
+            .user_db
+            .get_users()
+            .into_iter()
+            .map(|u| (*u).clone().into())
+            .collect()
+    }
+
+    // FIXME: This should require some form of confirmation/authentication
+    fn edit_user(&self, updated_user: User) -> Result<User> {
         let mut guard = self.data.write();
         let stored = guard.user_db.update_user(updated_user.into())?;
         Ok(User {
             id: stored.id(),
             username: stored.username().to_owned(),
             friends: Vec::from(stored.friends()),
+        })
+    }
+
+    // FIXME: Require confirmation on both parties.
+    pub fn add_friend(&self, user_id: UserId, friend_id: UserId) -> Result<()> {
+        let mut guard = self.data.write();
+        let mut user = guard.user_db.get_user(user_id)?.clone();
+        let mut friend = guard.user_db.get_user(friend_id)?.clone();
+
+        if !user.friends().contains(&friend_id) {
+            let mut new_friends = Vec::from(user.friends());
+            new_friends.push(friend_id);
+            user = UserRow::new(user.id(), user.username().to_owned(), new_friends);
+            guard.user_db.update_user(user)?;
         }
-        .into())
+
+        if !friend.friends().contains(&user_id) {
+            let mut new_friends = Vec::from(friend.friends());
+            new_friends.push(user_id);
+            friend = UserRow::new(friend.id(), friend.username().to_owned(), new_friends);
+            guard.user_db.update_user(friend)?;
+        }
+        Ok(())
     }
 }
 

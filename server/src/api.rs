@@ -3,14 +3,12 @@ use axum::{
     extract::{Path, State},
     http::StatusCode,
 };
+use common::{ExpenseId, GroupId, User, UserId, api::GetUserResponse};
 use serde::{Deserialize, Serialize};
 use tracing::debug;
 use uuid::Uuid;
-use common::{UserId, GroupId, ExpenseId, User, Group, Expense};
 
-use crate::{
-    db::{ExpenseRow, GroupRow, UserDB, UserRow}, state::AppState
-};
+use crate::state::AppState;
 
 #[derive(Deserialize, Debug)]
 pub struct RegisterRequest {
@@ -76,6 +74,15 @@ pub enum ApiResponse<T> {
     Error { message: String },
 }
 
+fn json_not_implemented<T>() -> (StatusCode, Json<ApiResponse<T>>) {
+    (
+        StatusCode::INTERNAL_SERVER_ERROR,
+        Json(ApiResponse::Error {
+            message: "Function not implemented".to_owned(),
+        }),
+    )
+}
+
 // Helper function for error responses (generic over T)
 fn json_error<T>(status: StatusCode, message: &str) -> (StatusCode, Json<ApiResponse<T>>) {
     (
@@ -116,12 +123,40 @@ pub async fn register_user(
     }
 }
 
+pub async fn get_user(
+    State(state): State<AppState>,
+    Path(user_id): Path<UserId>,
+) -> (StatusCode, Json<ApiResponse<GetUserResponse>>) {
+    debug!("Get user: {:?}", user_id);
+    match state.get_user(user_id) {
+        Ok(user) => json_success(StatusCode::OK, user.into()),
+        Err(_) => json_error(StatusCode::NOT_FOUND, "User not found"),
+    }
+}
+
+pub async fn get_users(
+    State(state): State<AppState>,
+) -> (StatusCode, Json<ApiResponse<Vec<GetUserResponse>>>) {
+    debug!("Get users:");
+    let users = state.get_users();
+    json_success(
+        StatusCode::OK,
+        users.into_iter().map(|u| u.into()).collect(),
+    )
+}
+
 pub async fn add_friend(
     State(state): State<AppState>,
     Json(payload): Json<FriendRequest>,
 ) -> (StatusCode, Json<ApiResponse<serde_json::Value>>) {
     debug!("Add friend: {:?}", payload);
-    json_success(StatusCode::OK, serde_json::json!({"ok": true}))
+    match state.add_friend(payload.user_id, payload.friend_id) {
+        Ok(_) => json_success(
+            StatusCode::OK,
+            serde_json::json!({"status": "friend added"}),
+        ),
+        Err(_) => json_error(StatusCode::BAD_REQUEST, "user_id or friend_id not found"),
+    }
 }
 
 pub async fn create_group(
@@ -129,13 +164,7 @@ pub async fn create_group(
     Json(payload): Json<CreateGroupRequest>,
 ) -> (StatusCode, Json<ApiResponse<CreateGroupResponse>>) {
     debug!("Create group: {:?}", payload);
-    json_success(
-        StatusCode::CREATED,
-        CreateGroupResponse {
-            id: Uuid::new_v4(),
-            name: payload.name,
-        },
-    )
+    json_not_implemented()
 }
 
 pub async fn create_expense(
@@ -143,7 +172,7 @@ pub async fn create_expense(
     Json(payload): Json<CreateExpenseRequest>,
 ) -> (StatusCode, Json<ApiResponse<ExpenseResponse>>) {
     debug!("Create expense: {:?}", payload);
-    json_success(StatusCode::CREATED, ExpenseResponse { id: Uuid::new_v4() })
+    json_not_implemented()
 }
 
 pub async fn get_user_balances(
@@ -151,13 +180,7 @@ pub async fn get_user_balances(
     Path(user_id): Path<Uuid>,
 ) -> (StatusCode, Json<ApiResponse<Vec<BalanceEntry>>>) {
     debug!("get user balance: {:?}", user_id);
-    json_success(
-        StatusCode::OK,
-        vec![BalanceEntry {
-            other: Uuid::new_v4(),
-            amount: 0.0,
-        }],
-    )
+    json_not_implemented()
 }
 
 pub async fn get_group_balances(
@@ -165,14 +188,7 @@ pub async fn get_group_balances(
     Path(group_id): Path<Uuid>,
 ) -> (StatusCode, Json<ApiResponse<Vec<GroupBalance>>>) {
     debug!("get group balance: {:?}", group_id);
-    json_success(
-        StatusCode::OK,
-        vec![GroupBalance {
-            from: Uuid::new_v4(),
-            to: Uuid::new_v4(),
-            amount: 0.0,
-        }],
-    )
+    json_not_implemented()
 }
 
 // fn compute_debts(

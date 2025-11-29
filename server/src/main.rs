@@ -4,12 +4,17 @@ mod logger;
 mod state;
 mod types;
 
-use crate::state::AppState;
-use axum::{
-    routing::{get, post},
-    Router,
+use crate::{
+    api::{get_user, get_users},
+    state::AppState,
 };
-use std::net::SocketAddr; // adjust if crate name differs
+use axum::{
+    Router,
+    routing::{get, post},
+};
+use std::net::SocketAddr;
+use tower::ServiceBuilder;
+use tower_http::trace::TraceLayer; // adjust if crate name differs
 
 use crate::api::{
     add_friend, create_expense, create_group, get_group_balances, get_user_balances, register_user,
@@ -28,11 +33,14 @@ async fn main() -> anyhow::Result<()> {
 
     let app = Router::new()
         .route("/register", post(register_user))
+        .route("/user/{user_id}", get(get_user))
+        .route("/users", get(get_users))
         .route("/friend", post(add_friend))
         .route("/group", post(create_group))
         .route("/expense", post(create_expense))
         .route("/balances/{user_id}", get(get_user_balances))
         .route("/group_balances/{group_id}", get(get_group_balances))
+        .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
         .with_state(state.clone());
 
     let addr: SocketAddr = ([0, 0, 0, 0], 3000).into();

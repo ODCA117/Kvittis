@@ -1,12 +1,12 @@
 use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
-use tracing::debug;
 use std::{
     collections::BTreeMap,
     io::{Read, Write},
     path::{Path, PathBuf},
     str::FromStr,
 };
+use tracing::debug;
 
 use common::{ExpenseId, GroupId, UserId};
 
@@ -19,6 +19,7 @@ pub trait DataBase {
 pub trait UserDB: DataBase + Send + Sync {
     fn register(&mut self, user: UserRow) -> Result<&UserRow>;
     fn get_user(&self, id: UserId) -> Result<&UserRow>;
+    fn get_users(&self) -> Vec<&UserRow>;
     fn update_user(&mut self, user: UserRow) -> Result<&UserRow>;
 }
 
@@ -196,9 +197,15 @@ impl UserDB for UserFileDB {
         self.data.insert(id, user);
         self.data.get(&id).ok_or(anyhow!("User not found"))
     }
+
     fn get_user(&self, id: UserId) -> Result<&UserRow> {
         self.data.get(&id).ok_or(anyhow!("User not found"))
     }
+
+    fn get_users(&self) -> Vec<&UserRow> {
+        self.data.values().collect::<Vec<&UserRow>>()
+    }
+
     fn update_user(&mut self, user: UserRow) -> Result<&UserRow> {
         let id = user.id;
         self.data.insert(id, user);
