@@ -24,7 +24,7 @@ pub trait UserDB: DataBase + Send + Sync {
 }
 
 pub trait GroupDB: DataBase + Send + Sync {
-    // group operations later
+    fn create_group(&mut self, group: GroupRow) -> Result<&GroupRow>;
 }
 
 pub trait ExpenseDB: DataBase + Send + Sync {
@@ -251,7 +251,13 @@ impl DataBase for GroupFileDB {
     }
 }
 
-impl GroupDB for GroupFileDB {}
+impl GroupDB for GroupFileDB {
+    fn create_group(&mut self, group: GroupRow) -> Result<&GroupRow> {
+        let id = group.id;
+        self.data.insert(id, group);
+        self.data.get(&id).ok_or(anyhow!("Group not found"))
+    }
+}
 
 pub struct ExpenseFileDB {
     path: PathBuf,

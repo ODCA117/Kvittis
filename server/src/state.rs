@@ -5,7 +5,7 @@ use parking_lot::RwLock;
 use uuid::Uuid;
 
 use crate::db::{ExpenseDB, ExpenseRow, GroupDB, GroupRow, UserDB, UserRow};
-use common::{Expense, Group, User, UserId, api::CreateExpenseRequest};
+use common::{Expense, Group, User, UserId, api::{CreateExpenseRequest, CreateGroupRequest}};
 
 struct AppStateData {
     user_db: Box<dyn UserDB>,
@@ -131,6 +131,23 @@ impl AppState {
             description: stored.description().cloned(),
             group_id: stored.group_id(),
             timestamp_ms: stored.timestamp_ms(),
+        })
+    }
+
+    pub fn create_group(&self, group_req: CreateGroupRequest) -> Result<Group> {
+        let mut guard = self.data.write();
+        let group = Group {
+            id: Uuid::new_v4(),
+            name: group_req.name,
+            owner_id: group_req.owner_id,
+            members: group_req.members,
+        };
+        let stored = guard.group_db.create_group(group.clone().into())?;
+        Ok(Group {
+            id: stored.id(),
+            name: stored.name().to_owned(),
+            owner_id: stored.owner_id(),
+            members: stored.members().to_owned(),
         })
     }
 }

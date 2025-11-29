@@ -2,7 +2,8 @@ use anyhow::Result;
 use clap::Parser;
 use common::{
     api::{
-        CreateExpenseRequest, FriendRequest, GetUserResponse, RegisterRequest, RegisterResponse,
+        CreateExpenseRequest, CreateGroupRequest, CreateGroupResponse, FriendRequest,
+        GetUserResponse, RegisterRequest, RegisterResponse,
     },
     Expense, User, UserId,
 };
@@ -13,6 +14,7 @@ const GET_USER_ENDPOINT: &str = "/user/";
 const GET_USERS_ENDPOINT: &str = "/users";
 const ADD_FRIEND_ENDPOINT: &str = "/friend";
 const CREATE_EXPENSE_ENDPOINT: &str = "/expense";
+const CREATE_GROUP_ENDPOINT: &str = "/group";
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -100,6 +102,24 @@ impl KvittisClient {
         let resp = resp.json::<CreateExpenseRequest>().await?;
         Ok(resp)
     }
+
+    async fn create_group(
+        &self,
+        name: &str,
+        owner_id: UserId,
+        members: Vec<UserId>,
+    ) -> Result<CreateGroupResponse> {
+        let url = self.url.join(CREATE_GROUP_ENDPOINT)?;
+        let request = CreateGroupRequest {
+            name: name.to_owned(),
+            owner_id,
+            members,
+        };
+        let resp = self.http.post(url).json(&request).send().await?;
+        dbg!(&resp);
+        let resp = resp.json::<CreateGroupResponse>().await?;
+        Ok(resp)
+    }
 }
 
 #[tokio::main]
@@ -110,6 +130,11 @@ async fn main() -> Result<()> {
     let user: User = test_client.register_user("test_name").await?.into();
     let user2: User = test_client.register_user("test2_name").await?.into();
     test_client.add_friend(user.id, user2.id).await?;
+
+    let group = test_client
+        .create_group("test_group", user.id, vec![user.id, user2.id])
+        .await?;
+    dbg!(&group);
 
     let expense = test_client
         .create_expense(
