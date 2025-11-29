@@ -29,6 +29,7 @@ pub trait GroupDB: DataBase + Send + Sync {
 
 pub trait ExpenseDB: DataBase + Send + Sync {
     // expense operations later
+    fn create_expense(&mut self, expense: ExpenseRow) -> Result<&ExpenseRow>;
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -97,7 +98,7 @@ pub struct ExpenseRow {
     id: ExpenseId,
     payer: UserId,
     participants: Vec<UserId>,
-    amount: f64,
+    amount: u64,
     description: Option<String>,
     group_id: Option<GroupId>,
     timestamp_ms: i64,
@@ -108,7 +109,7 @@ impl ExpenseRow {
         id: ExpenseId,
         payer: UserId,
         participants: Vec<UserId>,
-        amount: f64,
+        amount: u64,
         description: Option<String>,
         group_id: Option<GroupId>,
         timestamp_ms: i64,
@@ -136,7 +137,7 @@ impl ExpenseRow {
         &self.participants
     }
 
-    pub fn amount(&self) -> f64 {
+    pub fn amount(&self) -> u64 {
         self.amount
     }
 
@@ -271,6 +272,7 @@ impl ExpenseFileDB {
             }),
         }
     }
+
     pub fn disconnect(self) -> Result<()> {
         self.commit()
     }
@@ -289,7 +291,13 @@ impl DataBase for ExpenseFileDB {
     }
 }
 
-impl ExpenseDB for ExpenseFileDB {}
+impl ExpenseDB for ExpenseFileDB {
+    fn create_expense(&mut self, expense: ExpenseRow) -> Result<&ExpenseRow> {
+        let id = expense.id;
+        self.data.insert(id, expense);
+        self.data.get(&id).ok_or(anyhow!("Expense not found"))
+    }
+}
 
 fn read_file_db(path: &Path) -> Result<Option<Vec<u8>>> {
     match std::fs::exists(path) {

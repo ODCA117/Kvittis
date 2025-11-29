@@ -1,4 +1,4 @@
-use crate::{ExpenseId, GroupId, User, UserId};
+use crate::{Expense, ExpenseId, GroupId, User, UserId};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -42,14 +42,20 @@ pub struct CreateGroupResponse {
 pub struct CreateExpenseRequest {
     pub payer: UserId,
     pub participants: Vec<UserId>,
-    pub amount: f64,
+    pub amount: u64,
     pub description: Option<String>,
     pub group_id: Option<GroupId>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct ExpenseResponse {
+pub struct CreateExpenseResponse {
     pub id: ExpenseId,
+    pub payer: UserId,
+    pub participants: Vec<UserId>,
+    pub amount: u64,
+    pub description: Option<String>,
+    pub group_id: Option<GroupId>,
+    pub timestamp_ms: i64,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -107,6 +113,34 @@ impl From<RegisterResponse> for User {
             id: value.id,
             username: value.username,
             friends: vec![],
+        }
+    }
+}
+
+impl From<CreateExpenseResponse> for Expense {
+    fn from(value: CreateExpenseResponse) -> Self {
+        Expense {
+            id: value.id,
+            payer: value.payer,
+            participants: value.participants,
+            amount: value.amount,
+            description: value.description,
+            group_id: value.group_id,
+            timestamp_ms: value.timestamp_ms,
+        }
+    }
+}
+
+impl From<Expense> for CreateExpenseResponse {
+    fn from(value: Expense) -> Self {
+        CreateExpenseResponse {
+            id: value.id,
+            payer: value.payer,
+            participants: value.participants,
+            amount: value.amount,
+            description: value.description,
+            group_id: value.group_id,
+            timestamp_ms: value.timestamp_ms,
         }
     }
 }

@@ -1,14 +1,18 @@
 use anyhow::Result;
 use clap::Parser;
 use common::{
-    api::{FriendRequest, GetUserResponse, RegisterRequest, RegisterResponse}, User, UserId,
+    api::{
+        CreateExpenseRequest, FriendRequest, GetUserResponse, RegisterRequest, RegisterResponse,
+    },
+    Expense, User, UserId,
 };
 use reqwest::{Client as HttpClient, Url};
 
 const REGISTER_ENDPOINT: &str = "/register";
 const GET_USER_ENDPOINT: &str = "/user/";
 const GET_USERS_ENDPOINT: &str = "/users";
-const GET_FRIEND_ENDPOINT: &str = "/friend";
+const ADD_FRIEND_ENDPOINT: &str = "/friend";
+const CREATE_EXPENSE_ENDPOINT: &str = "/expense";
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -65,7 +69,7 @@ impl KvittisClient {
     }
 
     async fn add_friend(&self, user_id: UserId, friend_id: UserId) -> Result<()> {
-        let url = self.url.join(GET_FRIEND_ENDPOINT)?;
+        let url = self.url.join(ADD_FRIEND_ENDPOINT)?;
         let friend_request = FriendRequest { user_id, friend_id };
         let resp = self.http.post(url).json(&friend_request).send().await?;
         dbg!(&resp);
@@ -73,6 +77,28 @@ impl KvittisClient {
             true => Ok(()),
             false => Err(anyhow::anyhow!("Failed to add friend")),
         }
+    }
+
+    async fn create_expense(
+        &self,
+        payer: UserId,
+        participants: Vec<UserId>,
+        amount: u64,
+        description: Option<String>,
+    ) -> Result<CreateExpenseRequest> {
+        let url = self.url.join(CREATE_EXPENSE_ENDPOINT)?;
+        let request = CreateExpenseRequest {
+            payer,
+            amount,
+            description,
+            participants,
+            group_id: None,
+        };
+
+        let resp = self.http.post(url).json(&request).send().await?;
+        dbg!(&resp);
+        let resp = resp.json::<CreateExpenseRequest>().await?;
+        Ok(resp)
     }
 }
 
@@ -83,15 +109,16 @@ async fn main() -> Result<()> {
     let test_client = KvittisClient::new(&args.url)?;
     let user: User = test_client.register_user("test_name").await?.into();
     let user2: User = test_client.register_user("test2_name").await?.into();
-    dbg!(&user);
-    let user = test_client.get_user(user.id).await?;
-    dbg!(&user);
-    let users = test_client.get_users().await?;
-    dbg!(&users);
     test_client.add_friend(user.id, user2.id).await?;
-    let user = test_client.get_user(user.id).await?;
-    dbg!(&user);
-    let user2 = test_client.get_user(user2.id).await?;
-    dbg!(&user2);
+
+    let expense = test_client
+        .create_expense(
+            user.id,
+            vec![user.id, user2.id],
+            1000,
+            Some("Lunch".to_string()),
+        )
+        .await?;
+    dbg!(&expense);
     Ok(())
 }

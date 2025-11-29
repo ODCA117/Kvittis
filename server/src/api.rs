@@ -3,68 +3,30 @@ use axum::{
     extract::{Path, State},
     http::StatusCode,
 };
-use common::{ExpenseId, GroupId, User, UserId, api::GetUserResponse};
+use common::{
+    ExpenseId, GroupId, User, UserId,
+    api::{
+        CreateExpenseRequest, CreateExpenseResponse, CreateGroupRequest, CreateGroupResponse,
+        FriendRequest, GetUserResponse, RegisterRequest, RegisterResponse,
+    },
+};
 use serde::{Deserialize, Serialize};
 use tracing::debug;
 use uuid::Uuid;
 
 use crate::state::AppState;
 
-#[derive(Deserialize, Debug)]
-pub struct RegisterRequest {
-    username: String,
-}
-
-#[derive(Serialize)]
-pub struct RegisterResponse {
-    id: UserId,
-    username: String,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct FriendRequest {
-    user_id: UserId,
-    friend_id: UserId,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct CreateGroupRequest {
-    name: String,
-    owner_id: UserId,
-    members: Vec<UserId>,
-}
-
-#[derive(Serialize)]
-pub struct CreateGroupResponse {
-    id: GroupId,
-    name: String,
-}
-
-#[derive(Deserialize, Debug)]
-pub struct CreateExpenseRequest {
-    payer: UserId,
-    participants: Vec<UserId>,
-    amount: f64,
-    description: Option<String>,
-    group_id: Option<GroupId>,
-}
-
-#[derive(Serialize)]
-pub struct ExpenseResponse {
-    id: ExpenseId,
-}
-
 #[derive(Serialize)]
 pub struct BalanceEntry {
     other: UserId,
-    amount: f64,
+    amount: u64,
 }
 
 #[derive(Serialize)]
 pub struct GroupBalance {
     from: UserId,
     to: UserId,
-    amount: f64,
+    amount: u64,
 }
 
 #[derive(Serialize)]
@@ -170,9 +132,15 @@ pub async fn create_group(
 pub async fn create_expense(
     State(state): State<AppState>,
     Json(payload): Json<CreateExpenseRequest>,
-) -> (StatusCode, Json<ApiResponse<ExpenseResponse>>) {
+) -> (StatusCode, Json<ApiResponse<CreateExpenseResponse>>) {
     debug!("Create expense: {:?}", payload);
-    json_not_implemented()
+    match state.create_expense(payload) {
+        Ok(e) => json_success(StatusCode::CREATED, e.into()),
+        Err(_) => json_error(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed to create expense",
+        ),
+    }
 }
 
 pub async fn get_user_balances(

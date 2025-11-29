@@ -1,10 +1,11 @@
-use std::sync::Arc;
+use std::{iter::chain, sync::Arc};
 
 use anyhow::Result;
 use parking_lot::RwLock;
+use uuid::Uuid;
 
 use crate::db::{ExpenseDB, ExpenseRow, GroupDB, GroupRow, UserDB, UserRow};
-use common::{Expense, Group, User, UserId};
+use common::{Expense, Group, User, UserId, api::CreateExpenseRequest};
 
 struct AppStateData {
     user_db: Box<dyn UserDB>,
@@ -108,6 +109,29 @@ impl AppState {
             guard.user_db.update_user(friend)?;
         }
         Ok(())
+    }
+
+    pub fn create_expense(&self, expense_req: CreateExpenseRequest) -> Result<Expense> {
+        let mut guard = self.data.write();
+        let expense = Expense {
+            id: Uuid::new_v4(),
+            payer: expense_req.payer,
+            participants: expense_req.participants,
+            amount: expense_req.amount,
+            description: expense_req.description,
+            group_id: expense_req.group_id,
+            timestamp_ms: chrono::Utc::now().timestamp_millis(),
+        };
+        let stored = guard.expense_db.create_expense(expense.into())?;
+        Ok(Expense {
+            id: stored.id(),
+            payer: stored.payer(),
+            participants: stored.participants().to_owned(),
+            amount: stored.amount(),
+            description: stored.description().cloned(),
+            group_id: stored.group_id(),
+            timestamp_ms: stored.timestamp_ms(),
+        })
     }
 }
 
