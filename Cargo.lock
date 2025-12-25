@@ -1231,6 +1231,7 @@ dependencies = [
  "anyhow",
  "axum",
  "chrono",
+ "clap",
  "common",
  "parking_lot",
  "serde",

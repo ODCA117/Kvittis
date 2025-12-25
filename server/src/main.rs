@@ -1,4 +1,5 @@
 mod api;
+mod cli;
 mod db;
 mod logger;
 mod state;
@@ -12,7 +13,8 @@ use axum::{
     Router,
     routing::{get, post},
 };
-use std::net::SocketAddr;
+use clap::Parser;
+use std::{net::SocketAddr, path::Path};
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer; // adjust if crate name differs
 
@@ -23,11 +25,15 @@ use crate::api::{
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     logger::init();
+    let args = cli::Args::parse();
+    println!("args: {:?}", args);
 
+    /* Data path */
     // Connect to database
-    let user_db = db::UserFileDB::connect("user_db.json").expect("Cannot open user db");
-    let group_db = db::GroupFileDB::connect("group_db.json").expect("Cannot open group db");
-    let expense_db = db::ExpenseFileDB::connect("expense_db.json").expect("Cannot open expense db");
+    let data_dir = Path::new(&args.data_dir);
+    let user_db = db::UserFileDB::connect(&data_dir.join("user_db.json")).expect("Cannot open user db");
+    let group_db = db::GroupFileDB::connect(&data_dir.join("group_db.json")).expect("Cannot open group db");
+    let expense_db = db::ExpenseFileDB::connect(&data_dir.join("expense_db.json")).expect("Cannot open expense db");
 
     let state = AppState::new(user_db, group_db, expense_db);
 
@@ -43,7 +49,8 @@ async fn main() -> anyhow::Result<()> {
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
         .with_state(state.clone());
 
-    let addr: SocketAddr = ([0, 0, 0, 0], 3000).into();
+    let ip = args.ip.parse().expect("Failed to parse IP address");
+    let addr = SocketAddr::new(ip, args.port);
     let listener = tokio::net::TcpListener::bind(addr).await?;
     println!("Listening on {addr}");
     let mut shutdown_state = state.clone();

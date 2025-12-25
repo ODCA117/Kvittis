@@ -1,10 +1,7 @@
 use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::BTreeMap,
-    io::{Read, Write},
-    path::{Path, PathBuf},
-    str::FromStr,
+    collections::BTreeMap, fs, io::{Read, Write}, path::{Path, PathBuf}, str::FromStr
 };
 use tracing::debug;
 
@@ -160,16 +157,15 @@ pub struct UserFileDB {
 }
 
 impl UserFileDB {
-    pub fn connect(path: &str) -> Result<Self> {
-        let path = PathBuf::from_str(path)?;
+    pub fn connect(path: &Path) -> Result<Self> {
         match read_file_db(&path)? {
             Some(raw) => {
                 debug!("Read file UserDB");
                 let data = serde_json::from_slice(&raw)?;
-                Ok(Self { path, data })
+                Ok(Self { path: path.to_path_buf(), data })
             }
             None => Ok(Self {
-                path,
+                path: path.to_path_buf(),
                 data: BTreeMap::new(),
             }),
         }
@@ -181,8 +177,14 @@ impl UserFileDB {
 
 impl DataBase for UserFileDB {
     fn commit(&self) -> Result<()> {
-        debug!("Commit database: UserDB");
+        debug!("Commit database: UserDB to {:?}", &self.path);
         let data = serde_json::to_vec(&self.data)?;
+
+        if let Some(parent) = self.path.parent() {
+            debug!("Create parent dir: {:?}", &parent);
+            fs::create_dir_all(parent)?;
+        }
+        
         let mut file = std::fs::OpenOptions::new()
             .write(true)
             .create(true)
@@ -220,15 +222,14 @@ pub struct GroupFileDB {
 }
 
 impl GroupFileDB {
-    pub fn connect(path: &str) -> Result<Self> {
-        let path = PathBuf::from_str(path)?;
+    pub fn connect(path: &Path) -> Result<Self> {
         match read_file_db(&path)? {
             Some(raw) => {
                 let data = serde_json::from_slice(&raw)?;
-                Ok(Self { path, data })
+                Ok(Self { path: path.to_path_buf(), data })
             }
             None => Ok(Self {
-                path,
+                path: path.to_path_buf(),
                 data: BTreeMap::new(),
             }),
         }
@@ -240,7 +241,13 @@ impl GroupFileDB {
 
 impl DataBase for GroupFileDB {
     fn commit(&self) -> Result<()> {
-        debug!("Commit database: GroupDB");
+        debug!("Commit database: GroupDB to {:?}", &self.path);
+
+        if let Some(parent) = self.path.parent() {
+            debug!("Create parent dir: {:?}", &parent);
+            fs::create_dir_all(parent)?;
+        }
+        
         let data = serde_json::to_vec(&self.data)?;
         let mut file = std::fs::OpenOptions::new()
             .write(true)
@@ -265,15 +272,14 @@ pub struct ExpenseFileDB {
 }
 
 impl ExpenseFileDB {
-    pub fn connect(path: &str) -> Result<Self> {
-        let path = PathBuf::from_str(path)?;
+    pub fn connect(path: &Path) -> Result<Self> {
         match read_file_db(&path)? {
             Some(raw) => {
                 let data = serde_json::from_slice(&raw)?;
-                Ok(Self { path, data })
+                Ok(Self { path: path.to_path_buf(), data })
             }
             None => Ok(Self {
-                path,
+                path: path.to_path_buf(),
                 data: BTreeMap::new(),
             }),
         }
@@ -286,7 +292,13 @@ impl ExpenseFileDB {
 
 impl DataBase for ExpenseFileDB {
     fn commit(&self) -> Result<()> {
-        debug!("Commit database: ExpenseDB");
+        debug!("Commit database: ExpenseDB to {:?}", &self.path);
+
+        if let Some(parent) = self.path.parent() {
+            debug!("Create parent dir: {:?}", &parent);
+            fs::create_dir_all(parent)?;
+        }
+        
         let data = serde_json::to_vec(&self.data)?;
         let mut file = std::fs::OpenOptions::new()
             .write(true)
