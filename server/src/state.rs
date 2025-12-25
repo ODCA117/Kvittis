@@ -5,7 +5,10 @@ use parking_lot::RwLock;
 use uuid::Uuid;
 
 use crate::db::{ExpenseDB, ExpenseRow, GroupDB, GroupRow, UserDB, UserRow};
-use common::{Expense, Group, User, UserId, api::{CreateExpenseRequest, CreateGroupRequest}};
+use common::{
+    Expense, Group, User, UserId,
+    api::{CreateExpenseRequest, CreateGroupRequest},
+};
 
 struct AppStateData {
     user_db: Box<dyn UserDB>,

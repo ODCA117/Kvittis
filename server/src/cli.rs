@@ -25,4 +25,3 @@ pub struct Args {
     #[arg(short('a'), long, default_value = "")]
     pub data_dir: String,
 }
-

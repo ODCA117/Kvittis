@@ -1,7 +1,11 @@
 use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
 use std::{
-    collections::BTreeMap, fs, io::{Read, Write}, path::{Path, PathBuf}, str::FromStr
+    collections::BTreeMap,
+    fs,
+    io::{Read, Write},
+    path::{Path, PathBuf},
+    str::FromStr,
 };
 use tracing::debug;
 
@@ -162,7 +166,10 @@ impl UserFileDB {
             Some(raw) => {
                 debug!("Read file UserDB");
                 let data = serde_json::from_slice(&raw)?;
-                Ok(Self { path: path.to_path_buf(), data })
+                Ok(Self {
+                    path: path.to_path_buf(),
+                    data,
+                })
             }
             None => Ok(Self {
                 path: path.to_path_buf(),
@@ -184,7 +191,7 @@ impl DataBase for UserFileDB {
             debug!("Create parent dir: {:?}", &parent);
             fs::create_dir_all(parent)?;
         }
-        
+
         let mut file = std::fs::OpenOptions::new()
             .write(true)
             .create(true)
@@ -226,7 +233,10 @@ impl GroupFileDB {
         match read_file_db(&path)? {
             Some(raw) => {
                 let data = serde_json::from_slice(&raw)?;
-                Ok(Self { path: path.to_path_buf(), data })
+                Ok(Self {
+                    path: path.to_path_buf(),
+                    data,
+                })
             }
             None => Ok(Self {
                 path: path.to_path_buf(),
@@ -247,7 +257,7 @@ impl DataBase for GroupFileDB {
             debug!("Create parent dir: {:?}", &parent);
             fs::create_dir_all(parent)?;
         }
-        
+
         let data = serde_json::to_vec(&self.data)?;
         let mut file = std::fs::OpenOptions::new()
             .write(true)
@@ -276,7 +286,10 @@ impl ExpenseFileDB {
         match read_file_db(&path)? {
             Some(raw) => {
                 let data = serde_json::from_slice(&raw)?;
-                Ok(Self { path: path.to_path_buf(), data })
+                Ok(Self {
+                    path: path.to_path_buf(),
+                    data,
+                })
             }
             None => Ok(Self {
                 path: path.to_path_buf(),
@@ -298,7 +311,7 @@ impl DataBase for ExpenseFileDB {
             debug!("Create parent dir: {:?}", &parent);
             fs::create_dir_all(parent)?;
         }
-        
+
         let data = serde_json::to_vec(&self.data)?;
         let mut file = std::fs::OpenOptions::new()
             .write(true)

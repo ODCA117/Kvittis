@@ -127,7 +127,13 @@ pub async fn create_group(
 ) -> (StatusCode, Json<ApiResponse<CreateGroupResponse>>) {
     debug!("Create group: {:?}", payload);
     match state.create_group(payload) {
-        Ok(g) => json_success(StatusCode::CREATED, CreateGroupResponse { id: g.id, name: g.name }),
+        Ok(g) => json_success(
+            StatusCode::CREATED,
+            CreateGroupResponse {
+                id: g.id,
+                name: g.name,
+            },
+        ),
         Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to create group"),
     }
 }

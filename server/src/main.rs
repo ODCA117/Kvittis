@@ -31,9 +31,12 @@ async fn main() -> anyhow::Result<()> {
     /* Data path */
     // Connect to database
     let data_dir = Path::new(&args.data_dir);
-    let user_db = db::UserFileDB::connect(&data_dir.join("user_db.json")).expect("Cannot open user db");
-    let group_db = db::GroupFileDB::connect(&data_dir.join("group_db.json")).expect("Cannot open group db");
-    let expense_db = db::ExpenseFileDB::connect(&data_dir.join("expense_db.json")).expect("Cannot open expense db");
+    let user_db =
+        db::UserFileDB::connect(&data_dir.join("user_db.json")).expect("Cannot open user db");
+    let group_db =
+        db::GroupFileDB::connect(&data_dir.join("group_db.json")).expect("Cannot open group db");
+    let expense_db = db::ExpenseFileDB::connect(&data_dir.join("expense_db.json"))
+        .expect("Cannot open expense db");
 
     let state = AppState::new(user_db, group_db, expense_db);
 
