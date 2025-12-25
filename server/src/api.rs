@@ -4,13 +4,13 @@ use axum::{
     http::StatusCode,
 };
 use common::{
-    ExpenseId, GroupId, User, UserId,
+    User, UserId,
     api::{
         CreateExpenseRequest, CreateExpenseResponse, CreateGroupRequest, CreateGroupResponse,
         FriendRequest, GetUserResponse, RegisterRequest, RegisterResponse,
     },
 };
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use tracing::debug;
 use uuid::Uuid;
 
@@ -153,7 +153,7 @@ pub async fn create_expense(
 }
 
 pub async fn get_user_balances(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
     Path(user_id): Path<Uuid>,
 ) -> (StatusCode, Json<ApiResponse<Vec<BalanceEntry>>>) {
     debug!("get user balance: {:?}", user_id);
@@ -161,7 +161,7 @@ pub async fn get_user_balances(
 }
 
 pub async fn get_group_balances(
-    State(state): State<AppState>,
+    State(_state): State<AppState>,
     Path(group_id): Path<Uuid>,
 ) -> (StatusCode, Json<ApiResponse<Vec<GroupBalance>>>) {
     debug!("get group balance: {:?}", group_id);

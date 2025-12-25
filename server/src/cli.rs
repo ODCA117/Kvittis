@@ -2,8 +2,8 @@ use clap::{Parser, ValueEnum};
 
 #[derive(Clone, Debug, ValueEnum)]
 pub enum DbType {
-    SQL,
-    FILE,
+    Sql,
+    File,
 }
 
 #[derive(Parser, Debug)]

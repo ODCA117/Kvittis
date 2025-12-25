@@ -5,7 +5,6 @@ use std::{
     fs,
     io::{Read, Write},
     path::{Path, PathBuf},
-    str::FromStr,
 };
 use tracing::debug;
 
@@ -162,7 +161,7 @@ pub struct UserFileDB {
 
 impl UserFileDB {
     pub fn connect(path: &Path) -> Result<Self> {
-        match read_file_db(&path)? {
+        match read_file_db(path)? {
             Some(raw) => {
                 debug!("Read file UserDB");
                 let data = serde_json::from_slice(&raw)?;
@@ -195,6 +194,7 @@ impl DataBase for UserFileDB {
         let mut file = std::fs::OpenOptions::new()
             .write(true)
             .create(true)
+            .truncate(true)
             .open(&self.path)?;
         file.write_all(&data)?;
         Ok(())
@@ -230,7 +230,7 @@ pub struct GroupFileDB {
 
 impl GroupFileDB {
     pub fn connect(path: &Path) -> Result<Self> {
-        match read_file_db(&path)? {
+        match read_file_db(path)? {
             Some(raw) => {
                 let data = serde_json::from_slice(&raw)?;
                 Ok(Self {
@@ -262,6 +262,7 @@ impl DataBase for GroupFileDB {
         let mut file = std::fs::OpenOptions::new()
             .write(true)
             .create(true)
+            .truncate(true)
             .open(&self.path)?;
         file.write_all(&data)?;
         Ok(())
@@ -283,7 +284,7 @@ pub struct ExpenseFileDB {
 
 impl ExpenseFileDB {
     pub fn connect(path: &Path) -> Result<Self> {
-        match read_file_db(&path)? {
+        match read_file_db(path)? {
             Some(raw) => {
                 let data = serde_json::from_slice(&raw)?;
                 Ok(Self {
@@ -316,6 +317,7 @@ impl DataBase for ExpenseFileDB {
         let mut file = std::fs::OpenOptions::new()
             .write(true)
             .create(true)
+            .truncate(true)
             .open(&self.path)?;
         file.write_all(&data)?;
         Ok(())
