@@ -1,37 +1,34 @@
 pub mod db_file;
-use anyhow::{Result, anyhow};
+// pub mod db_sqlite;
+use anyhow::Result;
 use serde::{Deserialize, Serialize};
-use std::{io::Read, path::Path};
+use async_trait::async_trait;
 
 use common::{ExpenseId, GroupId, UserId};
 
-// Object-safe base trait (no Sized)
-pub trait DataBase {
-    fn commit(&self) -> Result<()>;
+
+#[async_trait]
+pub trait Store: Send + Sync {
+    // --- Users ---
+    async fn create_user(&self, user: UserRow) -> Result<UserRow>;
+    async fn get_user(&self, id: UserId) -> Result<Option<UserRow>>;
+    async fn list_users(&self) -> Result<Vec<UserRow>>;
+    async fn update_user(&self, user: UserRow) -> Result<UserRow>;
+
+    // --- Groups ---
+    async fn create_group(&self, group: GroupRow) -> Result<GroupRow>;
+    async fn get_group(&self, id: GroupId) -> Result<Option<GroupRow>>;
+
+    // --- Expenses ---
+    async fn create_expense(&self, expense: ExpenseRow) -> Result<ExpenseRow>;
+    async fn get_expense(&self, id: ExpenseId) -> Result<Option<ExpenseRow>>;
 }
 
-// Specialised traits (object-safe)
-pub trait UserDB: DataBase + Send + Sync {
-    fn register(&mut self, user: UserRow) -> Result<&UserRow>;
-    fn get_user(&self, id: UserId) -> Result<&UserRow>;
-    fn get_users(&self) -> Vec<&UserRow>;
-    fn update_user(&mut self, user: UserRow) -> Result<&UserRow>;
-}
-
-pub trait GroupDB: DataBase + Send + Sync {
-    fn create_group(&mut self, group: GroupRow) -> Result<&GroupRow>;
-}
-
-pub trait ExpenseDB: DataBase + Send + Sync {
-    // expense operations later
-    fn create_expense(&mut self, expense: ExpenseRow) -> Result<&ExpenseRow>;
-}
-
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct UserRow {
-    id: UserId,
-    username: String,
-    friends: Vec<UserId>,
+    pub id: UserId,
+    pub username: String,
+    pub friends: Vec<UserId>,
 }
 
 impl UserRow {
@@ -42,23 +39,14 @@ impl UserRow {
             friends,
         }
     }
-    pub fn id(&self) -> UserId {
-        self.id
-    }
-    pub fn username(&self) -> &str {
-        &self.username
-    }
-    pub fn friends(&self) -> &[UserId] {
-        &self.friends
-    }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GroupRow {
-    id: GroupId,
-    name: String,
-    owner_id: UserId,
-    members: Vec<UserId>,
+    pub id: GroupId,
+    pub name: String,
+    pub owner_id: UserId,
+    pub members: Vec<UserId>,
 }
 
 impl GroupRow {
@@ -70,33 +58,17 @@ impl GroupRow {
             members,
         }
     }
-
-    pub fn id(&self) -> GroupId {
-        self.id
-    }
-
-    pub fn name(&self) -> &str {
-        &self.name
-    }
-
-    pub fn owner_id(&self) -> UserId {
-        self.owner_id
-    }
-
-    pub fn members(&self) -> &Vec<UserId> {
-        &self.members
-    }
 }
 
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExpenseRow {
-    id: ExpenseId,
-    payer: UserId,
-    participants: Vec<UserId>,
-    amount: u64,
-    description: Option<String>,
-    group_id: Option<GroupId>,
-    timestamp_ms: i64,
+    pub id: ExpenseId,
+    pub payer: UserId,
+    pub participants: Vec<UserId>,
+    pub amount: u64,
+    pub description: Option<String>,
+    pub group_id: Option<GroupId>,
+    pub timestamp_ms: i64,
 }
 
 impl ExpenseRow {
@@ -119,45 +91,5 @@ impl ExpenseRow {
             timestamp_ms,
         }
     }
-
-    pub fn id(&self) -> ExpenseId {
-        self.id
-    }
-
-    pub fn payer(&self) -> UserId {
-        self.payer
-    }
-
-    pub fn participants(&self) -> &Vec<UserId> {
-        &self.participants
-    }
-
-    pub fn amount(&self) -> u64 {
-        self.amount
-    }
-
-    pub fn description(&self) -> Option<&String> {
-        self.description.as_ref()
-    }
-
-    pub fn group_id(&self) -> Option<GroupId> {
-        self.group_id
-    }
-
-    pub fn timestamp_ms(&self) -> i64 {
-        self.timestamp_ms
-    }
 }
 
-fn read_file_db(path: &Path) -> Result<Option<Vec<u8>>> {
-    match std::fs::exists(path) {
-        Ok(true) => {
-            let mut file = std::fs::OpenOptions::new().read(true).open(path)?;
-            let mut buf = Vec::new();
-            file.read_to_end(&mut buf)?;
-            Ok(Some(buf))
-        }
-        Ok(false) => Ok(None),
-        Err(e) => Err(anyhow!(e.to_string())),
-    }
-}

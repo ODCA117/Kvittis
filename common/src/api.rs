@@ -73,7 +73,7 @@ pub struct GroupBalance {
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(untagged)]
-pub enum ApiResponse<T> {
+pub enum ApiResponse<T: Serialize> {
     Success(T),
     Error { message: String },
 }

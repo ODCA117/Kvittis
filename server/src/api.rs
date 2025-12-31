@@ -6,8 +6,7 @@ use axum::{
 use common::{
     User, UserId,
     api::{
-        CreateExpenseRequest, CreateExpenseResponse, CreateGroupRequest, CreateGroupResponse,
-        FriendRequest, GetUserResponse, RegisterRequest, RegisterResponse,
+        ApiResponse, BalanceEntry, CreateExpenseRequest, CreateExpenseResponse, CreateGroupRequest, CreateGroupResponse, FriendRequest, GetUserResponse, GroupBalance, RegisterRequest, RegisterResponse
     },
 };
 use serde::Serialize;
@@ -16,50 +15,32 @@ use uuid::Uuid;
 
 use crate::state::AppState;
 
-#[derive(Serialize)]
-pub struct BalanceEntry {
-    other: UserId,
-    amount: u64,
-}
-
-#[derive(Serialize)]
-pub struct GroupBalance {
-    from: UserId,
-    to: UserId,
-    amount: u64,
-}
-
-#[derive(Serialize)]
-#[serde(untagged)]
-pub enum ApiResponse<T> {
-    Success(T),
-    Error { message: String },
-}
-
-fn json_not_implemented<T>() -> (StatusCode, Json<ApiResponse<T>>) {
+/// NOTE: This could maybe be replaced by a impl IntoResponse to be even more generic?
+fn json_not_implemented<T: Serialize>() -> (StatusCode, Json<ApiResponse<T>>) {
     (
         StatusCode::INTERNAL_SERVER_ERROR,
-        Json(ApiResponse::Error {
+        Json::<ApiResponse<T>>(ApiResponse::Error {
             message: "Function not implemented".to_owned(),
         }),
     )
 }
 
 // Helper function for error responses (generic over T)
-fn json_error<T>(status: StatusCode, message: &str) -> (StatusCode, Json<ApiResponse<T>>) {
+fn json_error<T: Serialize>(status: StatusCode, message: &str) -> (StatusCode, Json<ApiResponse<T>>) {
     (
         status,
-        Json(ApiResponse::Error {
+        Json::<ApiResponse<T>>(ApiResponse::Error {
             message: message.to_string(),
         }),
     )
 }
 
 // Helper function for success responses
-fn json_success<T>(status: StatusCode, data: T) -> (StatusCode, Json<ApiResponse<T>>) {
-    (status, Json(ApiResponse::Success(data)))
+fn json_success<T: Serialize>(status: StatusCode, data: T) -> (StatusCode, Json<ApiResponse<T>>) {
+    (status, Json::<ApiResponse<T>>(ApiResponse::Success(data)))
 }
 
+#[axum::debug_handler]
 pub async fn register_user(
     State(state): State<AppState>,
     Json(payload): Json<RegisterRequest>,
@@ -73,12 +54,12 @@ pub async fn register_user(
 
     debug!("Register user: {:?}", payload);
 
-    match state.register_user(user) {
-        Ok(_) => json_success(
+    match state.register_user(user).await {
+        Ok(u) => json_success(
             StatusCode::CREATED,
             RegisterResponse {
-                id,
-                username: payload.username,
+                id: u.id,
+                username: u.username,
             },
         ),
         Err(_) => json_error(StatusCode::BAD_REQUEST, "user_id not found"),
@@ -90,7 +71,7 @@ pub async fn get_user(
     Path(user_id): Path<UserId>,
 ) -> (StatusCode, Json<ApiResponse<GetUserResponse>>) {
     debug!("Get user: {:?}", user_id);
-    match state.get_user(user_id) {
+    match state.get_user(user_id).await {
         Ok(user) => json_success(StatusCode::OK, user.into()),
         Err(_) => json_error(StatusCode::NOT_FOUND, "User not found"),
     }
@@ -100,11 +81,15 @@ pub async fn get_users(
     State(state): State<AppState>,
 ) -> (StatusCode, Json<ApiResponse<Vec<GetUserResponse>>>) {
     debug!("Get users:");
-    let users = state.get_users();
-    json_success(
-        StatusCode::OK,
-        users.into_iter().map(|u| u.into()).collect(),
-    )
+    match state.get_users().await {
+        Ok(users) => {
+            json_success(
+                StatusCode::OK,
+                users.into_iter().map(|u| u.into()).collect(),
+            )
+        },
+        Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to get users"),
+    }
 }
 
 pub async fn add_friend(
@@ -112,7 +97,7 @@ pub async fn add_friend(
     Json(payload): Json<FriendRequest>,
 ) -> (StatusCode, Json<ApiResponse<serde_json::Value>>) {
     debug!("Add friend: {:?}", payload);
-    match state.add_friend(payload.user_id, payload.friend_id) {
+    match state.add_friend(payload.user_id, payload.friend_id).await {
         Ok(_) => json_success(
             StatusCode::OK,
             serde_json::json!({"status": "friend added"}),
@@ -126,7 +111,7 @@ pub async fn create_group(
     Json(payload): Json<CreateGroupRequest>,
 ) -> (StatusCode, Json<ApiResponse<CreateGroupResponse>>) {
     debug!("Create group: {:?}", payload);
-    match state.create_group(payload) {
+    match state.create_group(payload).await {
         Ok(g) => json_success(
             StatusCode::CREATED,
             CreateGroupResponse {
@@ -143,7 +128,7 @@ pub async fn create_expense(
     Json(payload): Json<CreateExpenseRequest>,
 ) -> (StatusCode, Json<ApiResponse<CreateExpenseResponse>>) {
     debug!("Create expense: {:?}", payload);
-    match state.create_expense(payload) {
+    match state.create_expense(payload).await {
         Ok(e) => json_success(StatusCode::CREATED, e.into()),
         Err(_) => json_error(
             StatusCode::INTERNAL_SERVER_ERROR,
