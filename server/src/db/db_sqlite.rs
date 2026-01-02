@@ -1,43 +1,61 @@
-use common::UserId;
-use sqlx::{SqlitePool, Row};
-use anyhow::Result;
+use std::{collections::HashMap, path::Path};
 
-use crate::db::{DataBase, UserDB, UserRow};
+use anyhow::{Result, anyhow};
+use common::{ExpenseId, GroupId, UserId};
+use sqlx::{Row, SqlitePool, sqlite::SqlitePoolOptions};
+use tracing::{debug, info, warn};
+
+use crate::db::{ExpenseRow, GroupRow, Store, UserRow};
 
 pub struct SqliteStore {
     pool: SqlitePool,
 }
 
 impl SqliteStore {
-    pub fn new(pool: SqlitePool) -> Self {
-        Self { pool }
+    pub async fn connect(path: impl AsRef<Path> + std::fmt::Display) -> Result<Self> {
+        let url = format!("sqlite:{}?mode=rwc", path);
+        debug!("url: {:?}", url);
+        let pool = SqlitePoolOptions::new()
+            .max_connections(5)
+            .connect(&url)
+            .await?;
+        sqlx::migrate!("./migrations/").run(&pool).await?;
+        Ok(Self { pool })
     }
 }
 
 #[async_trait::async_trait]
 impl Store for SqliteStore {
-    async fn create_user(&self, user: UserRow) -> Result<()> {
-        sqlx::query(
+    async fn create_user(&self, user: UserRow) -> Result<UserRow> {
+        let res = sqlx::query(
             r#"
-            INSERT INTO users (id, username, friends)
-            VALUES (?, ?, ?)
+            INSERT INTO users (id, username)
+            VALUES ($1, $2)
             "#,
         )
         .bind(user.id)
-        .bind(user.username)
-        .bind(serde_json::to_string(&user.friends)?)
+        .bind(&user.username)
         .execute(&self.pool)
-        .await?;
+        .await;
 
-        Ok(())
+        match res {
+            Ok(sql_res) => {
+                info!("User added: {:?}", sql_res);
+                Ok(user)
+            }
+            Err(e) => {
+                warn!("Error: {:?}", e.to_string());
+                Err(anyhow!("Failed to add User to DB"))
+            }
+        }
     }
 
     async fn get_user(&self, id: UserId) -> Result<Option<UserRow>> {
         let row = sqlx::query(
             r#"
-            SELECT id, username, friends
+            SELECT id, username
             FROM users
-            WHERE id = ?
+            WHERE id = $1
             "#,
         )
         .bind(id)
@@ -45,56 +63,176 @@ impl Store for SqliteStore {
         .await?;
 
         let Some(row) = row else {
+            warn!("NO user found");
             return Ok(None);
         };
+        info!("User found");
 
-        Ok(Some(UserRow {
-            id: row.try_get("id")?,
-            username: row.try_get("username")?,
-            friends: serde_json::from_str(row.try_get::<String, _>("friends")?)?,
-        }))
-    }
-
-    async fn list_users(&self) -> Result<Vec<UserRow>> {
-        let rows = sqlx::query(
+        let friends: Vec<UserId> = sqlx::query_scalar(
             r#"
-            SELECT id, username, friends
-            FROM users
+            SELECT
+                CASE
+                    WHEN user1_id = $1 THEN user2_id
+                    ELSE user1_id
+                END AS friend_id
+            FROM
+                friendships
+            WHERE
+                user1_id = $1 OR user2_id = $1
             "#,
         )
+        .bind(id)
         .fetch_all(&self.pool)
         .await?;
+        let user = UserRow {
+            id: row.try_get("id")?,
+            username: row.try_get("username")?,
+            friends,
+        };
 
-        let users = rows
-            .into_iter()
-            .map(|row| {
-                Ok(UserRow {
-                    id: row.try_get("id")?,
-                    username: row.try_get("username")?,
-                    friends: serde_json::from_str(row.try_get::<String, _>("friends")?)?,
-                })
-            })
-            .collect::<Result<Vec<_>>>()?;
-
-        Ok(users)
+        info!(" USER: {:?}", &user);
+        Ok(Some(user))
     }
 
-    async fn update_user(&self, user: UserRow) -> Result<()> {
-        sqlx::query(
-            r#"
-            UPDATE users
-            SET username = ?, friends = ?
-            WHERE id = ?
+    async fn add_friend(&self, user1: UserId, user2: UserId) -> Result<()> {
+        let (id1, id2) = if user1 < user2 {
+            (user1, user2)
+        } else {
+            (user2, user1)
+        };
+
+        let exists: bool = print_sql_result(
+            sqlx::query_scalar(
+                r#"
+            SELECT EXISTS (
+                SELECT 1
+                FROM friendships
+                WHERE user1_id = $1 AND user2_id = $2
+            )"#,
+            )
+            .bind(id1)
+            .bind(id2)
+            .fetch_one(&self.pool)
+            .await,
+        )?;
+
+        if exists {
+            warn!("Friendship exists");
+            return Err(anyhow!("Friendship already exists"));
+        }
+
+        print_sql_result(
+            sqlx::query(
+                r#"
+            INSERT INTO friendships (user1_id, user2_id)
+            VALUES ($1, $2)
             "#,
-        )
-        .bind(user.username)
-        .bind(serde_json::to_string(&user.friends)?)
-        .bind(user.id)
-        .execute(&self.pool)
-        .await?;
+            )
+            .bind(id1)
+            .bind(id2)
+            .execute(&self.pool)
+            .await,
+        )?;
+
+        info!("Add friendship between {:?} and {:?}", user1, user2);
 
         Ok(())
     }
 
-    // Groups / Expenses omitted for brevity but same pattern
+    async fn list_users(&self) -> Result<Vec<UserRow>> {
+        /* Returns a vec with users that contans user_id, user_name, friend_id, and friend_username */
+        let friendships = print_sql_result(
+            sqlx::query(
+                r#"
+            SELECT
+                u.id          AS user_id,
+                u.username    AS user_username,
+                f.id          AS friend_id,
+                f.username    AS friend_username
+            FROM users u
+            LEFT JOIN friendships fs
+                ON u.id = fs.user1_id OR u.id = fs.user2_id
+            LEFT JOIN users f
+                ON f.id = CASE
+                    WHEN fs.user1_id = u.id THEN fs.user2_id
+                    ELSE fs.user1_id
+                END
+            ORDER BY u.id;
+            "#,
+            )
+            .fetch_all(&self.pool)
+            .await,
+        )?;
+
+        /* Merge all the friends to one user */
+        let mut map = HashMap::new();
+        for r in friendships.iter() {
+            let user_id: UserId = r.get("user_id");
+            let username: String = r.get("user_username");
+            let friend_id: Option<UserId> = r.try_get("friend_id").ok();
+            let user = map.entry(user_id).or_insert(UserRow {
+                id: user_id,
+                username,
+                friends: vec![],
+            });
+            if let Some(friend_id) = friend_id {
+                user.friends.push(friend_id);
+            }
+
+            // let friend_username: Option<String> = r.try_get("friend_username").ok();
+            // println!("user: {}, {}, friend: {:?}, {:?}", user_id, username, friend_id, friend_username);
+        }
+
+        let users: Vec<UserRow> = map.values().cloned().collect();
+        // dbg!(&users);
+        Ok(users)
+    }
+
+    async fn update_user(&self, user: UserRow) -> Result<UserRow> {
+        print_sql_result(
+            sqlx::query(
+                r#"
+            UPDATE users
+            SET username = ?
+            WHERE id = ?
+            "#,
+            )
+            .bind(&user.username)
+            .bind(user.id)
+            .execute(&self.pool)
+            .await,
+        )?;
+
+        Ok(user)
+    }
+
+    // --- Groups ---
+    async fn create_group(&self, _group: GroupRow) -> Result<GroupRow> {
+        todo!();
+    }
+    async fn get_group(&self, _id: GroupId) -> Result<Option<GroupRow>> {
+        todo!();
+    }
+
+    // --- Expenses ---
+    async fn create_expense(&self, _expense: ExpenseRow) -> Result<ExpenseRow> {
+        todo!();
+    }
+
+    async fn get_expense(&self, _id: ExpenseId) -> Result<Option<ExpenseRow>> {
+        todo!();
+    }
+}
+
+fn print_sql_result<T>(res: Result<T, sqlx::Error>) -> Result<T> {
+    match res {
+        Ok(res) => {
+            debug!("SQL query successful:");
+            Ok(res)
+        }
+        Err(e) => {
+            warn!("SQL query failed: {:?}", e.to_string());
+            Err(anyhow!("Failed to SQL query"))
+        }
+    }
 }

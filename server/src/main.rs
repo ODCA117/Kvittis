@@ -5,7 +5,8 @@ mod logger;
 mod state;
 mod types;
 
-use crate::db::db_file::{FileStore};
+use crate::db::db_file::FileStore;
+use crate::db::db_sqlite::SqliteStore;
 use crate::{
     api::{get_user, get_users},
     state::AppState,
@@ -15,10 +16,10 @@ use axum::{
     routing::{get, post},
 };
 use clap::Parser;
-use tracing::info;
 use std::{net::SocketAddr, path::Path};
 use tower::ServiceBuilder;
-use tower_http::trace::TraceLayer; // adjust if crate name differs
+use tower_http::trace::TraceLayer;
+use tracing::info; // adjust if crate name differs
 
 use crate::api::{
     add_friend, create_expense, create_group, get_group_balances, get_user_balances, register_user,
@@ -33,22 +34,20 @@ async fn main() -> anyhow::Result<()> {
     /* Data path */
     // Connect to database
     let data_dir = Path::new(&args.data_dir);
-    let store;
-    match args.db_type {
-        // cli::DbType::Sql => {
-            // user_db = UserSqlDB::connect(&data_dir.join("user_db.json")).expect("Cannot open user db");
-            // group_db =
-            //     GroupSqlDB::connect(&data_dir.join("group_db.json")).expect("Cannot open group db");
-            // expense_db =
-            //     ExpenseSqlDB::connect(&data_dir.join("expense_db.json")).expect("Cannot open expense db");
-        // },
+    let state = match args.db_type {
+        cli::DbType::Sql => {
+            let db = SqliteStore::connect(data_dir.join("store.db").to_string_lossy().as_ref())
+                .await
+                .expect("failed to open db");
+            AppState::new(db)
+        }
         cli::DbType::File => {
-            store =
-                FileStore::connect(&data_dir.join("store.json")).await.expect("Cannot open db");
-        },
-    }
-
-    let state = AppState::new(store);
+            let db = FileStore::connect(&data_dir.join("store.json"))
+                .await
+                .expect("Cannot open db");
+            AppState::new(db)
+        }
+    };
 
     let app = Router::new()
         .route("/register", post(register_user))

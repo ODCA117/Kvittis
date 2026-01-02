@@ -1,7 +1,8 @@
 use std::sync::Arc;
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 use tokio::sync::RwLock;
+use tracing::debug;
 use uuid::Uuid;
 
 use crate::db::{ExpenseRow, GroupRow, Store, UserRow};
@@ -15,9 +16,7 @@ struct AppStateData {
 }
 
 impl AppStateData {
-    fn new(
-        store: impl Store + 'static,
-    ) -> Self {
+    fn new(store: impl Store + 'static) -> Self {
         Self {
             store: Box::new(store),
         }
@@ -30,13 +29,9 @@ pub struct AppState {
 }
 
 impl AppState {
-    pub fn new(
-        store: impl Store + 'static,
-    ) -> AppState {
+    pub fn new(store: impl Store + 'static) -> AppState {
         AppState {
-            data: Arc::new(RwLock::new(AppStateData::new(
-                store,
-            ))),
+            data: Arc::new(RwLock::new(AppStateData::new(store))),
         }
     }
 
@@ -51,6 +46,8 @@ impl AppState {
     pub async fn register_user(&self, user: User) -> Result<User> {
         let guard = self.data.write().await;
         let stored = guard.store.create_user(user.into()).await?;
+
+        debug!("User added: {:?}", stored);
         Ok(User {
             id: stored.id,
             username: stored.username,
@@ -90,27 +87,16 @@ impl AppState {
 
     // FIXME: Require confirmation on both parties.
     pub async fn add_friend(&self, user_id: UserId, friend_id: UserId) -> Result<()> {
-        let mut guard = self.data.write().await;
-        let Some(mut user) = guard.store.get_user(user_id).await? else {
-            return Err(anyhow!("User not found"));
-        };
-        let Some(mut friend) = guard.store.get_user(friend_id).await? else {
-            return Err(anyhow!("Friend not found"));
-        };
+        let guard = self.data.write().await;
+        // let Some(mut user) = guard.store.get_user(user_id).await? else {
+        //     return Err(anyhow!("User not found"));
+        // };
+        // let Some(mut friend) = guard.store.get_user(friend_id).await? else {
+        //     return Err(anyhow!("Friend not found"));
+        // };
 
-        if !user.friends.contains(&friend_id) {
-            let mut new_friends = Vec::from(user.friends);
-            new_friends.push(friend_id);
-            user = UserRow::new(user.id, user.username, new_friends);
-            guard.store.update_user(user.into()).await?;
-        }
+        guard.store.add_friend(user_id, friend_id).await?;
 
-        if !friend.friends.contains(&user_id) {
-            let mut new_friends = Vec::from(friend.friends);
-            new_friends.push(user_id);
-            friend = UserRow::new(friend.id, friend.username, new_friends);
-            guard.store.update_user(friend).await?;
-        }
         Ok(())
     }
 

@@ -1,11 +1,11 @@
+// TODO: Put these behind features
 pub mod db_file;
-// pub mod db_sqlite;
+pub mod db_sqlite;
 use anyhow::Result;
-use serde::{Deserialize, Serialize};
 use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
 
 use common::{ExpenseId, GroupId, UserId};
-
 
 #[async_trait]
 pub trait Store: Send + Sync {
@@ -13,6 +13,7 @@ pub trait Store: Send + Sync {
     async fn create_user(&self, user: UserRow) -> Result<UserRow>;
     async fn get_user(&self, id: UserId) -> Result<Option<UserRow>>;
     async fn list_users(&self) -> Result<Vec<UserRow>>;
+    async fn add_friend(&self, user1: UserId, user2: UserId) -> Result<()>;
     async fn update_user(&self, user: UserRow) -> Result<UserRow>;
 
     // --- Groups ---
@@ -92,4 +93,3 @@ impl ExpenseRow {
         }
     }
 }
-

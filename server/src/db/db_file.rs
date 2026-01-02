@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Result, anyhow};
 use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
@@ -13,7 +13,6 @@ use crate::db::{ExpenseRow, GroupRow, Store, UserRow};
 /// ===============================
 /// File-backed persistent state
 /// ===============================
-
 #[derive(Debug, Default, Serialize, Deserialize)]
 struct FileState {
     users: BTreeMap<UserId, UserRow>,
@@ -24,7 +23,6 @@ struct FileState {
 /// ===============================
 /// FileStore
 /// ===============================
-
 pub struct FileStore {
     path: PathBuf,
     state: RwLock<FileState>,
@@ -89,14 +87,22 @@ impl Store for FileStore {
     }
 
     async fn list_users(&self) -> Result<Vec<UserRow>> {
-        Ok(self
-            .state
-            .read()
-            .await
-            .users
-            .values()
-            .cloned()
-            .collect())
+        Ok(self.state.read().await.users.values().cloned().collect())
+    }
+    async fn add_friend(&self, user1: UserId, user2: UserId) -> Result<()> {
+        let mut state = self.state.write().await;
+        if !state.users.contains_key(&user1) && !state.users.contains_key(&user2) {
+            return Err(anyhow!("users not found"));
+        }
+
+        let u1 = state.users.get_mut(&user1).unwrap();
+        u1.friends.push(user2);
+        let u2 = state.users.get_mut(&user2).unwrap();
+        u2.friends.push(user1);
+
+        drop(state);
+        self.persist().await?;
+        Ok(())
     }
 
     async fn update_user(&self, user: UserRow) -> Result<UserRow> {

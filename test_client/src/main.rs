@@ -7,6 +7,7 @@ use common::{
     },
     Expense, User, UserId,
 };
+use rand::Rng;
 use reqwest::{Client as HttpClient, Url};
 
 const REGISTER_ENDPOINT: &str = "/register";
@@ -122,28 +123,46 @@ impl KvittisClient {
     }
 }
 
+fn generate_name() -> String {
+    let n = rand::rng().random_range(1..10000);
+    let name = format!("user_{}", n);
+    name
+}
+
 #[tokio::main]
 async fn main() -> Result<()> {
     let args = Cli::parse();
 
     let test_client = KvittisClient::new(&args.url)?;
-    let user: User = test_client.register_user("test_name").await?.into();
-    let user2: User = test_client.register_user("test2_name").await?.into();
+    let user: User = test_client.register_user(&generate_name()).await?.into();
+    let user2: User = test_client.register_user(&generate_name()).await?.into();
     test_client.add_friend(user.id, user2.id).await?;
 
-    let group = test_client
-        .create_group("test_group", user.id, vec![user.id, user2.id])
-        .await?;
-    dbg!(&group);
+    let usr: User = test_client.get_user(user.id).await?.into();
+    dbg!(usr);
 
-    let expense = test_client
-        .create_expense(
-            user.id,
-            vec![user.id, user2.id],
-            1000,
-            Some("Lunch".to_string()),
-        )
-        .await?;
-    dbg!(&expense);
+    let users: Vec<User> = test_client
+        .get_users()
+        .await?
+        .into_iter()
+        .map(|f| User::from(f))
+        .collect();
+
+    dbg!(users);
+
+    // let group = test_client
+    //     .create_group("test_group", user.id, vec![user.id, user2.id])
+    //     .await?;
+    // dbg!(&group);
+    //
+    // let expense = test_client
+    //     .create_expense(
+    //         user.id,
+    //         vec![user.id, user2.id],
+    //         1000,
+    //         Some("Lunch".to_string()),
+    //     )
+    //     .await?;
+    // dbg!(&expense);
     Ok(())
 }

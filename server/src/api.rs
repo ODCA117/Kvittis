@@ -6,7 +6,9 @@ use axum::{
 use common::{
     User, UserId,
     api::{
-        ApiResponse, BalanceEntry, CreateExpenseRequest, CreateExpenseResponse, CreateGroupRequest, CreateGroupResponse, FriendRequest, GetUserResponse, GroupBalance, RegisterRequest, RegisterResponse
+        ApiResponse, BalanceEntry, CreateExpenseRequest, CreateExpenseResponse, CreateGroupRequest,
+        CreateGroupResponse, FriendRequest, GetUserResponse, GroupBalance, RegisterRequest,
+        RegisterResponse,
     },
 };
 use serde::Serialize;
@@ -26,7 +28,10 @@ fn json_not_implemented<T: Serialize>() -> (StatusCode, Json<ApiResponse<T>>) {
 }
 
 // Helper function for error responses (generic over T)
-fn json_error<T: Serialize>(status: StatusCode, message: &str) -> (StatusCode, Json<ApiResponse<T>>) {
+fn json_error<T: Serialize>(
+    status: StatusCode,
+    message: &str,
+) -> (StatusCode, Json<ApiResponse<T>>) {
     (
         status,
         Json::<ApiResponse<T>>(ApiResponse::Error {
@@ -52,7 +57,7 @@ pub async fn register_user(
         friends: vec![],
     };
 
-    debug!("Register user: {:?}", payload);
+    debug!("Register user: {:?}, {:?}", payload, user);
 
     match state.register_user(user).await {
         Ok(u) => json_success(
@@ -82,12 +87,10 @@ pub async fn get_users(
 ) -> (StatusCode, Json<ApiResponse<Vec<GetUserResponse>>>) {
     debug!("Get users:");
     match state.get_users().await {
-        Ok(users) => {
-            json_success(
-                StatusCode::OK,
-                users.into_iter().map(|u| u.into()).collect(),
-            )
-        },
+        Ok(users) => json_success(
+            StatusCode::OK,
+            users.into_iter().map(|u| u.into()).collect(),
+        ),
         Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to get users"),
     }
 }
