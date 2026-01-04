@@ -1,11 +1,9 @@
 use anyhow::Result;
 use clap::Parser;
 use common::{
-    api::{
-        CreateExpenseRequest, CreateGroupRequest, CreateGroupResponse, FriendRequest,
-        GetUserResponse, RegisterRequest, RegisterResponse,
-    },
-    Expense, User, UserId,
+    Expense, GroupId, User, UserId, api::{
+        CreateExpenseRequest, CreateGroupRequest, CreateGroupResponse, FriendRequest, GetGroupResponse, GetUserResponse, RegisterRequest, RegisterResponse
+    }
 };
 use rand::Rng;
 use reqwest::{Client as HttpClient, Url};
@@ -15,7 +13,8 @@ const GET_USER_ENDPOINT: &str = "/user/";
 const GET_USERS_ENDPOINT: &str = "/users";
 const ADD_FRIEND_ENDPOINT: &str = "/friend";
 const CREATE_EXPENSE_ENDPOINT: &str = "/expense";
-const CREATE_GROUP_ENDPOINT: &str = "/group";
+const CREATE_GROUP_ENDPOINT: &str = "/create_group";
+const GET_GROUP_ENDPOINT: &str = "/group/";
 
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
@@ -56,7 +55,6 @@ impl KvittisClient {
 
     async fn get_user(&self, id: UserId) -> Result<GetUserResponse> {
         let url = self.url.join(GET_USER_ENDPOINT)?.join(&id.to_string())?;
-
         let resp = self.http.get(url).send().await?;
         dbg!(&resp);
         let resp = resp.json::<GetUserResponse>().await?;
@@ -121,6 +119,14 @@ impl KvittisClient {
         let resp = resp.json::<CreateGroupResponse>().await?;
         Ok(resp)
     }
+
+    async fn get_group(&self, id: GroupId) -> Result<GetGroupResponse>{
+        let url = self.url.join(GET_GROUP_ENDPOINT)?.join(&id.to_string())?;
+        let resp = self.http.get(url).send().await?;
+        dbg!(&resp);
+        let resp = resp.json::<GetGroupResponse>().await?;
+        Ok(resp)
+    }
 }
 
 fn generate_name() -> String {
@@ -150,10 +156,15 @@ async fn main() -> Result<()> {
 
     dbg!(users);
 
-    // let group = test_client
-    //     .create_group("test_group", user.id, vec![user.id, user2.id])
-    //     .await?;
-    // dbg!(&group);
+    let group = test_client
+        .create_group("test_group", user.id, vec![])
+        .await?;
+    dbg!(&group);
+
+    let group = test_client
+        .get_group(group.id)
+        .await?;
+    dbg!(&group);
     //
     // let expense = test_client
     //     .create_expense(

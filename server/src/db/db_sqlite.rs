@@ -1,7 +1,7 @@
 use std::{collections::HashMap, path::Path};
 
 use anyhow::{Result, anyhow};
-use common::{ExpenseId, GroupId, UserId};
+use common::{ExpenseId, Group, GroupId, UserId};
 use sqlx::{Row, SqlitePool, sqlite::SqlitePoolOptions};
 use tracing::{debug, info, warn};
 
@@ -192,26 +192,102 @@ impl Store for SqliteStore {
         print_sql_result(
             sqlx::query(
                 r#"
-            UPDATE users
-            SET username = ?
-            WHERE id = ?
-            "#,
+                    UPDATE users
+                    SET username = $1
+                    WHERE id = $2
+                "#,
             )
             .bind(&user.username)
             .bind(user.id)
             .execute(&self.pool)
-            .await,
+            .await
         )?;
 
         Ok(user)
     }
 
     // --- Groups ---
-    async fn create_group(&self, _group: GroupRow) -> Result<GroupRow> {
-        todo!();
+    async fn create_group(&self, group: GroupRow) -> Result<GroupRow> {
+        print_sql_result(
+            sqlx::query(
+                r#"
+                    INSERT INTO groups (id, name, owner_id)
+                    VALUES ($1, $2, $3)
+                "#,
+            )
+            .bind(group.id)
+            .bind(&group.name)
+            .bind(group.owner_id)
+            .execute(&self.pool)
+            .await
+        )?;
+
+        print_sql_result(
+            sqlx::query(
+                r#"
+                    INSERT INTO group_members (group_id, user_id)
+                    VALUES ($1, $2)
+                "#,
+
+            )
+            .bind(group.id)
+            .bind(group.owner_id)
+            .execute(&self.pool)
+            .await
+        )?;
+
+        Ok(group)
     }
-    async fn get_group(&self, _id: GroupId) -> Result<Option<GroupRow>> {
-        todo!();
+
+    async fn get_group(&self, id: GroupId) -> Result<Option<GroupRow>> {
+        warn!("Get Group!!!!!");
+        let group = print_sql_result(
+            sqlx::query(
+                r#"
+                    SELECT
+                        g.id                AS group_id,
+                        g.name              AS group_name,
+                        g.owner_id          AS group_owner,
+                        u.id                AS user_id,
+                        u.username          AS username
+                    FROM groups g
+                    LEFT JOIN group_members gm
+                        ON g.id = gm.group_id
+                    LEFT JOIN users u
+                        ON gm.user_id = u.id
+                    WHERE g.id = $1
+                    ORDER BY g.id;
+                "#,
+            )
+            .bind(id)
+            .fetch_all(&self.pool)
+            .await,
+        )?;
+
+        let mut map = HashMap::new();
+        for r in group.iter() {
+            let id: GroupId = r.get("group_id");
+            let name: String = r.get("group_name");
+            let owner_id: UserId = r.get("group_owner");
+            let user_id: UserId = r.get("user_id");
+            let username: String = r.get("username");
+            let g = map.entry(id).or_insert( GroupRow { id, name, owner_id, members: vec![] });
+            g.members.push(user_id);
+
+            // let user = map.entry(user_id).or_insert(UserRow {
+            //     id: user_id,
+            //     username,
+            //     friends: vec![],
+            // });
+            // if let Some(friend_id) = friend_id {
+            //     user.friends.push(friend_id);
+            // }
+
+            // let friend_username: Option<String> = r.try_get("friend_username").ok();
+            // println!("group: {}, {}, {}, user: {:?}, {:?}", group_id, group_name, group_owner, user_id, username);
+        }
+
+        Ok(Some(map.values().cloned().collect::<Vec<GroupRow>>()[0].clone()))
     }
 
     // --- Expenses ---

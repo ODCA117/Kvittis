@@ -2,13 +2,12 @@ use std::sync::Arc;
 
 use anyhow::{Result, anyhow};
 use tokio::sync::RwLock;
-use tracing::debug;
+use tracing::{debug, warn};
 use uuid::Uuid;
 
 use crate::db::{ExpenseRow, GroupRow, Store, UserRow};
 use common::{
-    Expense, Group, User, UserId,
-    api::{CreateExpenseRequest, CreateGroupRequest},
+    Expense, Group, GroupId, User, UserId, api::{CreateExpenseRequest, CreateGroupRequest}
 };
 
 struct AppStateData {
@@ -125,6 +124,12 @@ impl AppState {
         };
         let stored = guard.store.create_group(group.clone().into()).await?;
         Ok(stored.into())
+    }
+
+    pub async fn get_group(&self, group_id: GroupId) -> Result<Option<Group>> {
+        let guard = self.data.write().await;
+        warn!("GET GROUP!!!!");
+        guard.store.get_group(group_id).await.map(|g| g.map(|g| g.into()))
     }
 }
 

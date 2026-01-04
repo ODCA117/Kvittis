@@ -4,15 +4,12 @@ use axum::{
     http::StatusCode,
 };
 use common::{
-    User, UserId,
-    api::{
-        ApiResponse, BalanceEntry, CreateExpenseRequest, CreateExpenseResponse, CreateGroupRequest,
-        CreateGroupResponse, FriendRequest, GetUserResponse, GroupBalance, RegisterRequest,
-        RegisterResponse,
-    },
+    GroupId, User, UserId, api::{
+        ApiResponse, BalanceEntry, CreateExpenseRequest, CreateExpenseResponse, CreateGroupRequest, CreateGroupResponse, FriendRequest, GetGroupResponse, GetUserResponse, GroupBalance, RegisterRequest, RegisterResponse
+    }
 };
 use serde::Serialize;
-use tracing::debug;
+use tracing::{debug, warn};
 use uuid::Uuid;
 
 use crate::state::AppState;
@@ -125,6 +122,33 @@ pub async fn create_group(
         Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to create group"),
     }
 }
+
+pub async fn get_group(
+    State(state): State<AppState>,
+    Path(group_id): Path<GroupId>,
+) -> (StatusCode, Json<ApiResponse<GetGroupResponse>>) {
+    warn!("Get group: {:?}", group_id);
+    match state.get_group(group_id).await {
+        Ok(g) => {
+            if let Some(g) = g {
+                debug!("Found group");
+                json_success(
+                    StatusCode::CREATED,
+                    GetGroupResponse {
+                        id: g.id,
+                        name: g.name,
+                        owner_id: g.owner_id,
+                        members: g.members,
+                    },
+                )
+            } else {
+                json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to create group")
+            }
+        },
+        Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to create group"),
+    }
+}
+
 
 pub async fn create_expense(
     State(state): State<AppState>,

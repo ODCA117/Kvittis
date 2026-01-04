@@ -1,4 +1,4 @@
-use crate::{Expense, ExpenseId, GroupId, User, UserId};
+use crate::{Expense, ExpenseId, Group, GroupId, User, UserId};
 use serde::{Deserialize, Serialize};
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -36,6 +36,19 @@ pub struct CreateGroupRequest {
 pub struct CreateGroupResponse {
     pub id: GroupId,
     pub name: String,
+}
+
+// #[derive(Serialize, Deserialize, Debug)]
+// pub struct GetGroupRequest {
+//     pub id: GroupId,
+// }
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GetGroupResponse {
+    pub id: GroupId,
+    pub name: String,
+    pub owner_id: UserId,
+    pub members: Vec<UserId>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -113,6 +126,17 @@ impl From<RegisterResponse> for User {
             id: value.id,
             username: value.username,
             friends: vec![],
+        }
+    }
+}
+
+impl From<GetGroupResponse> for Group {
+    fn from(value: GetGroupResponse) -> Self {
+        Group {
+            id: value.id,
+            name: value.name,
+            owner_id: value.owner_id,
+            members: value.members,
         }
     }
 }

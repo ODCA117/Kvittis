@@ -7,10 +7,7 @@ mod types;
 
 use crate::db::db_file::FileStore;
 use crate::db::db_sqlite::SqliteStore;
-use crate::{
-    api::{get_user, get_users},
-    state::AppState,
-};
+use crate::state::AppState;
 use axum::{
     Router,
     routing::{get, post},
@@ -22,7 +19,7 @@ use tower_http::trace::TraceLayer;
 use tracing::info; // adjust if crate name differs
 
 use crate::api::{
-    add_friend, create_expense, create_group, get_group_balances, get_user_balances, register_user,
+    add_friend, create_expense, create_group, get_group, get_group_balances, get_user_balances, register_user, get_user, get_users
 };
 
 #[tokio::main]
@@ -54,7 +51,8 @@ async fn main() -> anyhow::Result<()> {
         .route("/user/{user_id}", get(get_user))
         .route("/users", get(get_users))
         .route("/friend", post(add_friend))
-        .route("/group", post(create_group))
+        .route("/create_group", post(create_group))
+        .route("/group/{group_id}", get(get_group))
         .route("/expense", post(create_expense))
         .route("/balances/{user_id}", get(get_user_balances))
         .route("/group_balances/{group_id}", get(get_group_balances))
