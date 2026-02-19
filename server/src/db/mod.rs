@@ -21,6 +21,7 @@ pub trait Store: Send + Sync {
     async fn create_group(&self, group: GroupRow) -> Result<GroupRow>;
     async fn get_group(&self, id: GroupId) -> Result<Option<GroupRow>>;
     async fn delete_group(&self, id: GroupId) -> Result<()>;
+    async fn update_group(&self, group: GroupRow) -> Result<GroupRow>;
 
     // --- Expenses ---
     async fn create_expense(&self, expense: ExpenseRow) -> Result<ExpenseRow>;

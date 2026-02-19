@@ -339,6 +339,54 @@ impl Store for SqliteStore {
         
     }
 
+    async fn update_group(&self, group: GroupRow) -> Result<GroupRow> {
+        print_sql_result(
+            sqlx::query(
+                r#"
+                    UPDATE groups
+                    SET name = $1, owner_id = $2
+                    WHERE id = $3
+                "#,
+            )
+            .bind(&group.name)
+            .bind(group.owner_id)
+            .bind(group.id)
+            .execute(&self.pool)
+            .await
+        )?;
+
+        // Update members: remove all and add again (simpler than calculating the diff)
+        print_sql_result(
+            sqlx::query(
+                r#"
+                    DELETE FROM group_members WHERE group_id = $1
+                "#,
+
+            )
+            .bind(group.id)
+            .execute(&self.pool)
+            .await
+        )?;
+
+        for member in &group.members {
+            print_sql_result(
+                sqlx::query(
+                    r#"
+                        INSERT INTO group_members (group_id, user_id)
+                        VALUES ($1, $2)
+                    "#,
+
+                )
+                .bind(group.id)
+                .bind(member)
+                .execute(&self.pool)
+                .await
+            )?;
+        }
+
+        Ok(group)
+    }
+
     // --- Expenses ---
     async fn create_expense(&self, _expense: ExpenseRow) -> Result<ExpenseRow> {
         todo!();

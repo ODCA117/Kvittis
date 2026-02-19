@@ -5,7 +5,7 @@ use axum::{
 };
 use common::{
     GroupId, User, UserId, api::{
-        ApiResponse, BalanceEntry, CreateExpenseRequest, CreateExpenseResponse, CreateGroupRequest, CreateGroupResponse, FriendRequest, GetGroupResponse, GetUserResponse, GroupBalance, RegisterRequest, RegisterResponse
+        ApiResponse, BalanceEntry, CreateExpenseRequest, CreateExpenseResponse, CreateGroupRequest, CreateGroupResponse, FriendRequest, GetGroupResponse, GetUserResponse, GroupBalance, NewGroupMemberRequest, RegisterRequest, RegisterResponse, SearchUserRequest
     }
 };
 use serde::Serialize;
@@ -192,6 +192,20 @@ pub async fn get_group(
             }
         },
         Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to create group"),
+    }
+}
+
+pub async fn new_group_member(
+    State(state): State<AppState>,
+    Json(payload): Json<NewGroupMemberRequest>,
+) -> (StatusCode, Json<ApiResponse<serde_json::Value>>) {
+    debug!("Update group: {:?}", payload);
+    match state.new_group_member(payload).await {
+        Ok(g) => json_success(
+            StatusCode::OK,
+            serde_json::json!({"status": "Group updated"}),
+        ),
+        Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to update group"),
     }
 }
 

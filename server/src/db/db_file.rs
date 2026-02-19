@@ -143,6 +143,14 @@ impl Store for FileStore {
         Ok(self.state.read().await.groups.get(&id).cloned())
     }
 
+    async fn update_group(&self, group: GroupRow) -> Result<GroupRow> {
+        let mut state = self.state.write().await;
+        state.groups.insert(group.id, group.clone());
+        drop(state);
+        self.persist().await?;
+        Ok(group)
+    }
+
     // -------- Expenses --------
 
     async fn create_expense(&self, expense: ExpenseRow) -> Result<ExpenseRow> {
