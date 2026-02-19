@@ -7,7 +7,15 @@ edition = "2021"
 common = {path = "../common"}
 anyhow = "1"
 reqwest = { version = "0.12.24", features = ["json"] }
-tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "test-util"] }
 clap = { version = "4.5.53", features = ["derive"] }
 serde_json = "1.0.145"
 rand = "0.9.2"
+
+[lib]
+name = "rust_kvittis_client"
+path = "src/lib.rs"
+
+[[bin]]
+name = "test_setup_client"
+path = "src/bin.rs"
