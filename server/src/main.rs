@@ -5,9 +5,9 @@ mod logger;
 mod state;
 mod types;
 
-use crate::db::db_file::FileStore;
 use crate::db::db_sqlite::SqliteStore;
 use crate::state::AppState;
+use crate::{api::delete_user, db::db_file::FileStore};
 use axum::{
     Router,
     routing::{get, post},

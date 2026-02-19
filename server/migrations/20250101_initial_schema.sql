@@ -51,3 +51,4 @@ CREATE TABLE expense_participants (
     FOREIGN KEY (expense_id) REFERENCES expenses(id),
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
+
