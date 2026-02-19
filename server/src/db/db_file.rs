@@ -143,6 +143,10 @@ impl Store for FileStore {
         Ok(self.state.read().await.groups.get(&id).cloned())
     }
 
+    async fn get_groups(&self) -> Result<Vec<GroupRow>> {
+        Ok(self.state.read().await.groups.values().cloned().collect())
+    }
+
     async fn update_group(&self, group: GroupRow) -> Result<GroupRow> {
         let mut state = self.state.write().await;
         state.groups.insert(group.id, group.clone());

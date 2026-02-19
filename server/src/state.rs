@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use anyhow::{Result, anyhow};
 use tokio::sync::RwLock;
-use tracing::{debug, warn};
+use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 use crate::db::{ExpenseRow, GroupRow, Store, UserRow};
@@ -155,8 +155,20 @@ impl AppState {
 
     pub async fn get_group(&self, group_id: GroupId) -> Result<Option<Group>> {
         let guard = self.data.write().await;
-        warn!("GET GROUP!!!!");
+        debug!("GET GROUP!!!!");
         guard.store.get_group(group_id).await.map(|g| g.map(|g| g.into()))
+    }
+
+    pub async fn search_groups(&self, query: &str) -> Result<Vec<Group>> {
+        let guard = self.data.write().await;
+        debug!("Search gropu");
+        let groups = guard.store.get_groups().await?;
+        let groups: Vec<Group> = groups.into_iter()
+            .filter(|g| g.name.contains(query))
+            .map(|g| g.into())
+            .collect();
+        debug!("Search groups with query '{}': found {} groups", query, groups.len());
+        Ok(groups)
     }
 
     pub async fn new_group_member(&self, req: NewGroupMemberRequest) -> Result<Group> {

@@ -195,6 +195,28 @@ pub async fn get_group(
     }
 }
 
+pub async fn search_groups(
+    State(state): State<AppState>,
+    Json(payload): Json<SearchUserRequest>,
+) -> (StatusCode, Json<ApiResponse<Vec<GetGroupResponse>>>) {
+    debug!("Search groups: {:?}", payload);
+    match state.search_groups(&payload.query).await {
+        Ok(groups) => json_success(
+            StatusCode::OK,
+            groups
+                .into_iter()
+                .map(|g| GetGroupResponse {
+                    id: g.id,
+                    name: g.name,
+                    owner_id: g.owner_id,
+                    members: g.members,
+                })
+                .collect(),
+        ),
+        Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to search groups"),
+    }
+}
+
 pub async fn new_group_member(
     State(state): State<AppState>,
     Json(payload): Json<NewGroupMemberRequest>,

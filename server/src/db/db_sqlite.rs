@@ -257,7 +257,7 @@ impl Store for SqliteStore {
     }
 
     async fn get_group(&self, id: GroupId) -> Result<Option<GroupRow>> {
-        warn!("Get Group!!!!!");
+        info!("Get Group!!!!!");
         let group = print_sql_result(
             sqlx::query(
                 r#"
@@ -287,7 +287,7 @@ impl Store for SqliteStore {
             let name: String = r.get("group_name");
             let owner_id: UserId = r.get("group_owner");
             let user_id: UserId = r.get("user_id");
-            let username: String = r.get("username");
+            let _username: String = r.get("username");
             let g = map.entry(id).or_insert( GroupRow { id, name, owner_id, members: vec![] });
             g.members.push(user_id);
 
@@ -305,6 +305,42 @@ impl Store for SqliteStore {
         }
 
         Ok(Some(map.values().cloned().collect::<Vec<GroupRow>>()[0].clone()))
+    }
+
+    async fn get_groups(&self) -> Result<Vec<GroupRow>> {
+        let groups = print_sql_result(
+            sqlx::query(
+                r#"
+                    SELECT
+                        g.id                AS group_id,
+                        g.name              AS group_name,
+                        g.owner_id          AS group_owner,
+                        u.id                AS user_id,
+                        u.username          AS username
+                    FROM groups g
+                    LEFT JOIN group_members gm
+                        ON g.id = gm.group_id
+                    LEFT JOIN users u
+                        ON gm.user_id = u.id
+                    ORDER BY g.id;
+                "#,
+            )
+            .fetch_all(&self.pool)
+            .await,
+        )?;
+
+        let mut map = HashMap::new();
+        for r in groups.iter() {
+            let id: GroupId = r.get("group_id");
+            let name: String = r.get("group_name");
+            let owner_id: UserId = r.get("group_owner");
+            let user_id: UserId = r.get("user_id");
+            let _username: String = r.get("username");
+            let g = map.entry(id).or_insert( GroupRow { id, name, owner_id, members: vec![] });
+            g.members.push(user_id);
+        }
+
+        Ok(map.values().cloned().collect::<Vec<GroupRow>>())
     }
 
     async fn delete_group(&self, id: GroupId) -> Result<()> {

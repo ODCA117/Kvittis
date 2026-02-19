@@ -44,6 +44,11 @@ pub struct CreateGroupResponse {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct SearchGroupRequest {
+    pub query: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct NewGroupMemberRequest {
     pub group_id: GroupId,
     pub new_member: UserId,

@@ -20,6 +20,7 @@ pub trait Store: Send + Sync {
     // --- Groups ---
     async fn create_group(&self, group: GroupRow) -> Result<GroupRow>;
     async fn get_group(&self, id: GroupId) -> Result<Option<GroupRow>>;
+    async fn get_groups(&self) -> Result<Vec<GroupRow>>;
     async fn delete_group(&self, id: GroupId) -> Result<()>;
     async fn update_group(&self, group: GroupRow) -> Result<GroupRow>;
 

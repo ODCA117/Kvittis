@@ -19,8 +19,7 @@ use tower_http::trace::TraceLayer;
 use tracing::info; // adjust if crate name differs
 
 use crate::api::{
-    add_friend, create_expense, create_group, delete_group, get_group, get_group_balances,
-    get_user, get_user_balances, get_users, new_group_member, register_user, search_users,
+    add_friend, create_expense, create_group, delete_group, get_group, get_group_balances, get_user, get_user_balances, get_users, new_group_member, register_user, search_groups, search_users
 };
 
 #[tokio::main]
@@ -56,6 +55,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/friend", post(add_friend))
         .route("/create_group", post(create_group))
         .route("/group/{group_id}", get(get_group))
+        .route("/search_group", post(search_groups))
         .route("/new_group_member", post(new_group_member))
         .route("/group/{group_id}", delete(delete_group))
         .route("/expense", post(create_expense))

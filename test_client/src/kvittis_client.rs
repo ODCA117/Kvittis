@@ -2,7 +2,7 @@ use reqwest::{Client as HttpClient, Url};
 use anyhow::Result;
 use common::{
     Expense, GroupId, User, UserId, api::{
-        CreateExpenseRequest, CreateGroupRequest, CreateGroupResponse, FriendRequest, GetGroupResponse, GetUserResponse, NewGroupMemberRequest, RegisterRequest, RegisterResponse, SearchUserRequest
+        CreateExpenseRequest, CreateGroupRequest, CreateGroupResponse, FriendRequest, GetGroupResponse, GetUserResponse, NewGroupMemberRequest, RegisterRequest, RegisterResponse, SearchGroupRequest, SearchUserRequest
     }
 };
 
@@ -14,6 +14,8 @@ const ADD_FRIEND_ENDPOINT: &str = "/friend";
 const CREATE_EXPENSE_ENDPOINT: &str = "/expense";
 const CREATE_GROUP_ENDPOINT: &str = "/create_group";
 const GET_GROUP_ENDPOINT: &str = "/group/";
+const DELETE_GROUP_ENDPOINT: &str = "/group/";
+const SEARCH_GROUP_ENDPOINT: &str = "/search_group";
 const NEW_GROUP_MEMBER_ENDPOINT: &str = "/new_group_member";
 
 pub struct KvittisClient {
@@ -136,7 +138,7 @@ impl KvittisClient {
     }
 
     pub async fn delete_group(&self, id: GroupId) -> Result<()> {
-        let url = self.url.join(GET_GROUP_ENDPOINT)?.join(&id.to_string())?;
+        let url = self.url.join(DELETE_GROUP_ENDPOINT)?.join(&id.to_string())?;
         let resp = self.http.delete(url).send().await?;
         dbg!(&resp);
         match resp.status().is_success() {
@@ -145,11 +147,14 @@ impl KvittisClient {
         }
     }
 
-    pub async fn get_group_by_name(&self, name: &str) -> Result<GetGroupResponse> {
-        let url = self.url.join(GET_GROUP_ENDPOINT)?.join(&name)?;
-        let resp = self.http.get(url).send().await?;
+    pub async fn search_group(&self, query: &str) -> Result<Vec<GetGroupResponse>> {
+        let url = self.url.join(SEARCH_GROUP_ENDPOINT)?;
+        let search_request = SearchGroupRequest {
+            query: query.to_owned(),
+        };
+        let resp = self.http.post(url).json(&search_request).send().await?;
         dbg!(&resp);
-        let resp = resp.json::<GetGroupResponse>().await?;
+        let resp = resp.json::<Vec<GetGroupResponse>>().await?;
         Ok(resp)
     }
 

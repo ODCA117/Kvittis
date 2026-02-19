@@ -1,7 +1,7 @@
 
 /// These are more integration tests and scenario tests that are more complex.
 use anyhow::anyhow;
-use common::{User, UserId, api::{GetGroupResponse, GetUserResponse}};
+use common::{GroupId, User, UserId, api::{GetGroupResponse, GetUserResponse}};
 use rust_kvittis_client::kvittis_client::KvittisClient;
 
 #[tokio::test]
@@ -134,6 +134,29 @@ async fn test_add_user_to_group() -> anyhow::Result<()> {
     client.delete_group(group.id).await?;
     client.delete_user(owner.id).await?;
     client.delete_user(member.id).await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_get_group_by_name() -> anyhow::Result<()> {
+    let client = KvittisClient::new("http://localhost:3000")?;
+    let owner = client.register_user("get_group_by_name_owner").await?;
+    let group_name = "get_group_by_name_test_group";
+    let group = client.create_group(group_name, owner.id, vec![owner.id]).await?;
+
+    let resp = client.search_group(group_name).await?;
+    let ids: Vec<GroupId> = resp.iter().map(|g| g.id).collect();
+
+    assert!(ids.contains(&group.id));
+
+    let resp = client.search_group("not_found_name").await?;
+    let ids: Vec<GroupId> = resp.iter().map(|g| g.id).collect();
+
+    assert!(!ids.contains(&group.id));
+
+    // Cleanup
+    client.delete_group(group.id).await?;
+    client.delete_user(owner.id).await?;
     Ok(())
 }
 
