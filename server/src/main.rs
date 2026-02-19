@@ -9,8 +9,8 @@ use crate::db::db_sqlite::SqliteStore;
 use crate::state::AppState;
 use crate::{api::delete_user, db::db_file::FileStore};
 use axum::{
+    routing::{delete, get, post},
     Router,
-    routing::{get, post},
 };
 use clap::Parser;
 use std::{net::SocketAddr, path::Path};
@@ -49,6 +49,7 @@ async fn main() -> anyhow::Result<()> {
     let app = Router::new()
         .route("/register", post(register_user))
         .route("/user/{user_id}", get(get_user))
+        .route("/user/{user_id}", delete(delete_user))
         .route("/users", get(get_users))
         .route("/search_user", post(search_users))
         .route("/friend", post(add_friend))

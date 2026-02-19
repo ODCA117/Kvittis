@@ -68,6 +68,20 @@ pub async fn register_user(
     }
 }
 
+pub async fn delete_user(
+    State(state): State<AppState>,
+    Path(user_id): Path<UserId>,
+) -> (StatusCode, Json<ApiResponse<serde_json::Value>>) {
+    debug!("Delete user: {:?}", user_id);
+    match state.delete_user(user_id).await {
+        Ok(_) => json_success(
+            StatusCode::OK,
+            serde_json::json!({"status": "User deleted"}),
+        ),
+        Err(_) => json_error(StatusCode::NOT_FOUND, "User not found"),
+    }
+}
+
 pub async fn get_user(
     State(state): State<AppState>,
     Path(user_id): Path<UserId>,

@@ -86,6 +86,14 @@ impl Store for FileStore {
         Ok(self.state.read().await.users.get(&id).cloned())
     }
 
+    async fn delete_user(&self, id: UserId) -> Result<()> {
+        let mut state = self.state.write().await;
+        state.users.remove(&id);
+        drop(state);
+        self.persist().await?;
+        Ok(())
+    }
+
     async fn list_users(&self) -> Result<Vec<UserRow>> {
         Ok(self.state.read().await.users.values().cloned().collect())
     }

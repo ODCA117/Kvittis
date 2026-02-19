@@ -94,6 +94,23 @@ impl Store for SqliteStore {
         Ok(Some(user))
     }
 
+    async fn delete_user(&self, id: UserId) -> Result<()> {
+        print_sql_result(
+            sqlx::query(
+                r#"
+            DELETE FROM users
+            WHERE id = $1
+            "#,
+            )
+            .bind(id)
+            .execute(&self.pool)
+            .await,
+        )?;
+
+        info!("User deleted: {:?}", id);
+        Ok(())
+    }
+
     async fn add_friend(&self, user1: UserId, user2: UserId) -> Result<()> {
         let (id1, id2) = if user1 < user2 {
             (user1, user2)

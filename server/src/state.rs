@@ -88,6 +88,12 @@ impl AppState {
         Ok(users)
     }
 
+    pub async fn delete_user(&self, id: UserId) -> Result<()> {
+        let guard = self.data.write().await;
+        guard.store.delete_user(id).await?;
+        Ok(())
+    }
+
     // FIXME: This should require some form of confirmation/authentication
     pub async fn edit_user(&self, updated_user: User) -> Result<User> {
         let guard = self.data.write().await;
