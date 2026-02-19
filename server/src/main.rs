@@ -50,6 +50,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/register", post(register_user))
         .route("/user/{user_id}", get(get_user))
         .route("/users", get(get_users))
+        .route("/search_user", post(search_users))
         .route("/friend", post(add_friend))
         .route("/create_group", post(create_group))
         .route("/group/{group_id}", get(get_group))

@@ -92,6 +92,20 @@ pub async fn get_users(
     }
 }
 
+pub async fn search_users(
+    State(state): State<AppState>,
+    Json(payload): Json<SearchUserRequest>,
+) -> (StatusCode, Json<ApiResponse<Vec<GetUserResponse>>>) {
+    debug!("Search users: {:?}", payload);
+    match state.search_users(&payload.query).await {
+        Ok(users) => json_success(
+            StatusCode::OK,
+            users.into_iter().map(|u| u.into()).collect(),
+        ),
+        Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to search users"),
+    }
+}
+
 pub async fn add_friend(
     State(state): State<AppState>,
     Json(payload): Json<FriendRequest>,

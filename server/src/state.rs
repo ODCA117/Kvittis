@@ -73,6 +73,21 @@ impl AppState {
             .collect())
     }
 
+    pub async fn search_users(&self, query: &str) -> Result<Vec<User>> {
+        let guard = self.data.read().await;
+        // NOTE: This is could be optimized later.
+        let users = guard
+            .store
+            .list_users()
+            .await?;
+        let users: Vec<User> = users.into_iter()
+            .filter(|u| u.username.contains(query))
+            .map(|u| u.into())
+            .collect();
+        debug!("Search users with query '{}': found {} users", query, users.len());
+        Ok(users)
+    }
+
     // FIXME: This should require some form of confirmation/authentication
     pub async fn edit_user(&self, updated_user: User) -> Result<User> {
         let guard = self.data.write().await;

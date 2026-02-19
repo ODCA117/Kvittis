@@ -20,6 +20,11 @@ pub struct GetUserResponse {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct SearchUserRequest {
+    pub query: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct FriendRequest {
     pub user_id: UserId,
     pub friend_id: UserId,
