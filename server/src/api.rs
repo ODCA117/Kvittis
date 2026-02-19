@@ -151,6 +151,24 @@ pub async fn create_group(
     }
 }
 
+pub async fn delete_group(
+    State(state): State<AppState>,
+    Path(group_id): Path<GroupId>,
+) -> (StatusCode, Json<ApiResponse<serde_json::Value>>) {
+
+    debug!("Delete group: {:?}", group_id);
+    match state.delete_group(group_id).await {
+        Ok(_) => {
+            debug!("Deleted group");
+            json_success(
+                StatusCode::OK,
+                serde_json::json!({"status": "Group deleted"}),
+            )
+        },
+        Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to delete group"),
+    }
+}
+
 pub async fn get_group(
     State(state): State<AppState>,
     Path(group_id): Path<GroupId>,

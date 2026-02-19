@@ -307,6 +307,38 @@ impl Store for SqliteStore {
         Ok(Some(map.values().cloned().collect::<Vec<GroupRow>>()[0].clone()))
     }
 
+    async fn delete_group(&self, id: GroupId) -> Result<()> {
+        // Remove the members first due to foreign key constraint
+        print_sql_result(
+            sqlx::query(
+                r#"
+                    DELETE FROM group_members WHERE group_id = $1
+                "#,
+
+            )
+            .bind(id)
+            .execute(&self.pool)
+            .await
+        )?;
+
+        // Remove the group
+        print_sql_result(
+            sqlx::query(
+                r#"
+            DELETE FROM groups
+            WHERE id = $1
+            "#,
+            )
+            .bind(id)
+            .execute(&self.pool)
+            .await,
+        )?;
+
+        info!("group deleted: {:?}", id);
+        Ok(())
+        
+    }
+
     // --- Expenses ---
     async fn create_expense(&self, _expense: ExpenseRow) -> Result<ExpenseRow> {
         todo!();

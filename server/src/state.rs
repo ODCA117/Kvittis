@@ -147,6 +147,12 @@ impl AppState {
         Ok(stored.into())
     }
 
+    pub async fn delete_group(&self, group_req: GroupId) -> Result<()> {
+        let guard = self.data.write().await;
+        guard.store.delete_group(group_req).await?;
+        Ok(())
+    }
+
     pub async fn get_group(&self, group_id: GroupId) -> Result<Option<Group>> {
         let guard = self.data.write().await;
         warn!("GET GROUP!!!!");

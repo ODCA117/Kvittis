@@ -55,6 +55,7 @@ async fn main() -> anyhow::Result<()> {
         .route("/friend", post(add_friend))
         .route("/create_group", post(create_group))
         .route("/group/{group_id}", get(get_group))
+        .route("/group/{group_id}", delete(delete_group))
         .route("/expense", post(create_expense))
         .route("/balances/{user_id}", get(get_user_balances))
         .route("/group_balances/{group_id}", get(get_group_balances))

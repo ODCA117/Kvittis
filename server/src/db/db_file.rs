@@ -131,6 +131,14 @@ impl Store for FileStore {
         Ok(group)
     }
 
+    async fn delete_group(&self, id: UserId) -> Result<()> {
+        let mut state = self.state.write().await;
+        state.groups.remove(&id);
+        drop(state);
+        self.persist().await?;
+        Ok(())
+    }
+
     async fn get_group(&self, id: GroupId) -> Result<Option<GroupRow>> {
         Ok(self.state.read().await.groups.get(&id).cloned())
     }
