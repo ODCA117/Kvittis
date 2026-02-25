@@ -28,6 +28,8 @@ pub trait Store: Send + Sync {
     async fn create_expense(&self, expense: ExpenseRow) -> Result<ExpenseRow>;
     async fn delete_expense(&self, id: ExpenseId) -> Result<()>;
     async fn get_expense(&self, id: ExpenseId) -> Result<Option<ExpenseRow>>;
+    async fn list_expenses_for_user(&self, user_id: UserId) -> Result<Vec<ExpenseRow>>;
+    async fn list_expenses_for_group(&self, group_id: GroupId) -> Result<Vec<ExpenseRow>>;
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

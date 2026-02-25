@@ -525,6 +525,89 @@ impl Store for SqliteStore {
 
         Ok(map.into_values().next())
     }
+
+    async fn list_expenses_for_user(&self, user_id: UserId) -> Result<Vec<ExpenseRow>> {
+        let rows = print_sql_result(
+            sqlx::query(
+                r#"
+                    SELECT
+                        e.id                AS expense_id,
+                        e.payer_id          AS payer,
+                        e.amount            AS amount,
+                        e.description       AS description,
+                        e.group_id          AS group_id,
+                        e.timestamp_ms      AS timestamp_ms,
+                        ep2.user_id         AS user_id
+                    FROM expenses e
+                    LEFT JOIN expense_participants ep2
+                        ON e.id = ep2.expense_id
+                    WHERE e.payer_id = $1
+                       OR EXISTS (
+                           SELECT 1 FROM expense_participants ep
+                           WHERE ep.expense_id = e.id AND ep.user_id = $1
+                       )
+                    ORDER BY e.id
+                "#,
+            )
+            .bind(user_id)
+            .fetch_all(&self.pool)
+            .await,
+        )?;
+
+        Ok(build_expense_rows(rows))
+    }
+
+    async fn list_expenses_for_group(&self, group_id: GroupId) -> Result<Vec<ExpenseRow>> {
+        let rows = print_sql_result(
+            sqlx::query(
+                r#"
+                    SELECT
+                        e.id                AS expense_id,
+                        e.payer_id          AS payer,
+                        e.amount            AS amount,
+                        e.description       AS description,
+                        e.group_id          AS group_id,
+                        e.timestamp_ms      AS timestamp_ms,
+                        ep.user_id          AS user_id
+                    FROM expenses e
+                    LEFT JOIN expense_participants ep
+                        ON e.id = ep.expense_id
+                    WHERE e.group_id = $1
+                    ORDER BY e.id
+                "#,
+            )
+            .bind(group_id)
+            .fetch_all(&self.pool)
+            .await,
+        )?;
+
+        Ok(build_expense_rows(rows))
+    }
+}
+
+fn build_expense_rows(rows: Vec<sqlx::sqlite::SqliteRow>) -> Vec<ExpenseRow> {
+    let mut map: HashMap<ExpenseId, ExpenseRow> = HashMap::new();
+    for r in rows.iter() {
+        let id: ExpenseId = r.get("expense_id");
+        let payer: UserId = r.get("payer");
+        let amount: i64 = r.get("amount");
+        let description: Option<String> = r.try_get("description").ok();
+        let group_id: Option<GroupId> = r.try_get("group_id").ok();
+        let timestamp_ms: i64 = r.get("timestamp_ms");
+        let e = map.entry(id).or_insert(ExpenseRow {
+            id,
+            payer,
+            participants: vec![],
+            amount,
+            description,
+            group_id,
+            timestamp_ms,
+        });
+        if let Ok(user_id) = r.try_get::<UserId, _>("user_id") {
+            e.participants.push(user_id);
+        }
+    }
+    map.into_values().collect()
 }
 
 fn print_sql_result<T>(res: Result<T, sqlx::Error>) -> Result<T> {

@@ -176,4 +176,24 @@ impl Store for FileStore {
     async fn get_expense(&self, id: ExpenseId) -> Result<Option<ExpenseRow>> {
         Ok(self.state.read().await.expenses.get(&id).cloned())
     }
+
+    async fn list_expenses_for_user(&self, user_id: UserId) -> Result<Vec<ExpenseRow>> {
+        let state = self.state.read().await;
+        Ok(state
+            .expenses
+            .values()
+            .filter(|e| e.payer == user_id || e.participants.contains(&user_id))
+            .cloned()
+            .collect())
+    }
+
+    async fn list_expenses_for_group(&self, group_id: GroupId) -> Result<Vec<ExpenseRow>> {
+        let state = self.state.read().await;
+        Ok(state
+            .expenses
+            .values()
+            .filter(|e| e.group_id == Some(group_id))
+            .cloned()
+            .collect())
+    }
 }

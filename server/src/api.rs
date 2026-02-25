@@ -231,12 +231,24 @@ pub async fn expense_handler(
 
         ExpenseRequest::ListForUser { user_id } => {
             debug!("List expenses for user: {:?}", user_id);
-            json_not_implemented()
+            match state.list_expenses_for_user(user_id).await {
+                Ok(expenses) => {
+                    let resp: Vec<GetExpenseResponse> = expenses.into_iter().map(|e| e.into()).collect();
+                    json_success(StatusCode::OK, serde_json::to_value(resp).unwrap())
+                }
+                Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to list expenses for user"),
+            }
         }
 
         ExpenseRequest::ListForGroup { group_id } => {
             debug!("List expenses for group: {:?}", group_id);
-            json_not_implemented()
+            match state.list_expenses_for_group(group_id).await {
+                Ok(expenses) => {
+                    let resp: Vec<GetExpenseResponse> = expenses.into_iter().map(|e| e.into()).collect();
+                    json_success(StatusCode::OK, serde_json::to_value(resp).unwrap())
+                }
+                Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to list expenses for group"),
+            }
         }
     }
 }
@@ -244,17 +256,23 @@ pub async fn expense_handler(
 // ── Balance handler ───────────────────────────────────────────────────────────
 
 pub async fn balance_handler(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     Json(payload): Json<BalanceRequest>,
 ) -> (StatusCode, Json<ApiResponse<serde_json::Value>>) {
     match payload {
         BalanceRequest::User { user_id } => {
             debug!("Get user balances: {:?}", user_id);
-            json_not_implemented()
+            match state.get_user_non_group_balances(user_id).await {
+                Ok(balances) => json_success(StatusCode::OK, serde_json::to_value(balances).unwrap()),
+                Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to get user balances"),
+            }
         }
         BalanceRequest::Group { group_id } => {
             debug!("Get group balances: {:?}", group_id);
-            json_not_implemented()
+            match state.get_group_balance_overview(group_id).await {
+                Ok(transfers) => json_success(StatusCode::OK, serde_json::to_value(transfers).unwrap()),
+                Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to get group balances"),
+            }
         }
     }
 }

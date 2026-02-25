@@ -6,8 +6,14 @@ use tracing::{debug, info, warn};
 use uuid::Uuid;
 
 use crate::db::{ExpenseRow, GroupRow, Store, UserRow};
+use std::collections::HashMap;
+
 use common::{
-    Expense, Group, GroupId, User, UserId, api::{CreateExpenseRequest, CreateGroupRequest, DeleteExpenseRequest, GetExpenseRequest, NewGroupMemberRequest}
+    Expense, Group, GroupId, User, UserId,
+    api::{
+        BalanceEntry, CreateExpenseRequest, CreateGroupRequest, DeleteExpenseRequest,
+        GetExpenseRequest, GroupBalance, NewGroupMemberRequest,
+    },
 };
 
 struct AppStateData {
@@ -145,6 +151,129 @@ impl AppState {
         let guard = self.data.write().await;
         guard.store.delete_expense(expense_req.id).await?;
         Ok(())
+    }
+
+    pub async fn list_expenses_for_user(&self, user_id: UserId) -> Result<Vec<Expense>> {
+        let guard = self.data.read().await;
+        let rows = guard.store.list_expenses_for_user(user_id).await?;
+        Ok(rows.into_iter().map(|r| r.into()).collect())
+    }
+
+    pub async fn list_expenses_for_group(&self, group_id: GroupId) -> Result<Vec<Expense>> {
+        let guard = self.data.read().await;
+        let rows = guard.store.list_expenses_for_group(group_id).await?;
+        Ok(rows.into_iter().map(|r| r.into()).collect())
+    }
+
+    /// Returns per-counterparty net balances for non-group expenses only.
+    /// Positive amount → counterparty owes `user_id`.
+    /// Negative amount → `user_id` owes counterparty.
+    pub async fn get_user_non_group_balances(&self, user_id: UserId) -> Result<Vec<BalanceEntry>> {
+        let expenses = self.list_expenses_for_user(user_id).await?;
+        let non_group: Vec<Expense> = expenses.into_iter().filter(|e| e.group_id.is_none()).collect();
+
+        let mut net: HashMap<UserId, i64> = HashMap::new();
+
+        for expense in &non_group {
+            let n = expense.participants.len() as i64;
+            if n == 0 { continue; }
+
+            // Deterministic integer split: sort participants by UserId ascending;
+            // first `rem` get base+1, rest get base.
+            let mut sorted_participants = expense.participants.clone();
+            sorted_participants.sort();
+
+            let base = expense.amount / n;
+            let rem = (expense.amount % n) as usize;
+
+            let shares: Vec<i64> = sorted_participants
+                .iter()
+                .enumerate()
+                .map(|(i, _)| if i < rem { base + 1 } else { base })
+                .collect();
+
+            for (participant, share) in sorted_participants.iter().zip(shares.iter()) {
+                if participant == &expense.payer {
+                    continue; // payer doesn't owe themselves
+                }
+                if expense.payer == user_id {
+                    // We are the payer: participant owes us their share
+                    *net.entry(*participant).or_insert(0) += *share;
+                } else if participant == &user_id {
+                    // We are a participant: we owe the payer our share
+                    *net.entry(expense.payer).or_insert(0) -= *share;
+                }
+            }
+        }
+
+        Ok(net
+            .into_iter()
+            .filter(|(_, amount)| *amount != 0)
+            .map(|(other, amount)| BalanceEntry { other, amount })
+            .collect())
+    }
+
+    /// Returns the minimal settlement transfers for a group.
+    /// All group expenses are included regardless of which members are involved.
+    pub async fn get_group_balance_overview(&self, group_id: GroupId) -> Result<Vec<GroupBalance>> {
+        let expenses = self.list_expenses_for_group(group_id).await?;
+
+        // Compute net position per member: net = paid − owed_share
+        let mut net: HashMap<UserId, i64> = HashMap::new();
+
+        for expense in &expenses {
+            let n = expense.participants.len() as i64;
+            if n == 0 { continue; }
+
+            let mut sorted_participants = expense.participants.clone();
+            sorted_participants.sort();
+
+            let base = expense.amount / n;
+            let rem = (expense.amount % n) as usize;
+
+            let shares: Vec<i64> = sorted_participants
+                .iter()
+                .enumerate()
+                .map(|(i, _)| if i < rem { base + 1 } else { base })
+                .collect();
+
+            // Payer gets the full amount credited
+            *net.entry(expense.payer).or_insert(0) += expense.amount;
+
+            // Each participant has their share debited
+            for (participant, share) in sorted_participants.iter().zip(shares.iter()) {
+                *net.entry(*participant).or_insert(0) -= share;
+            }
+        }
+
+        // Greedy settlement: sort debtors and creditors by UserId for determinism
+        let mut debtors: Vec<(UserId, i64)> = net
+            .iter()
+            .filter(|(_, v)| **v < 0)
+            .map(|(&id, &v)| (id, -v)) // store as positive "amount to pay"
+            .collect();
+        let mut creditors: Vec<(UserId, i64)> = net
+            .iter()
+            .filter(|(_, v)| **v > 0)
+            .map(|(&id, &v)| (id, v))
+            .collect();
+
+        debtors.sort_by_key(|(id, _)| *id);
+        creditors.sort_by_key(|(id, _)| *id);
+
+        let mut transfers: Vec<GroupBalance> = Vec::new();
+        let mut di = 0;
+        let mut ci = 0;
+        while di < debtors.len() && ci < creditors.len() {
+            let paid = debtors[di].1.min(creditors[ci].1);
+            transfers.push(GroupBalance { from: debtors[di].0, to: creditors[ci].0, amount: paid });
+            debtors[di].1 -= paid;
+            creditors[ci].1 -= paid;
+            if debtors[di].1 == 0 { di += 1; }
+            if creditors[ci].1 == 0 { ci += 1; }
+        }
+
+        Ok(transfers)
     }
 
     pub async fn create_group(&self, group_req: CreateGroupRequest) -> Result<Group> {
