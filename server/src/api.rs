@@ -228,6 +228,16 @@ pub async fn expense_handler(
                 Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to delete expense"),
             }
         }
+
+        ExpenseRequest::ListForUser { user_id } => {
+            debug!("List expenses for user: {:?}", user_id);
+            json_not_implemented()
+        }
+
+        ExpenseRequest::ListForGroup { group_id } => {
+            debug!("List expenses for group: {:?}", group_id);
+            json_not_implemented()
+        }
     }
 }
 

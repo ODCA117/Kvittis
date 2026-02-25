@@ -121,6 +121,8 @@ pub enum ExpenseRequest {
     },
     Get { id: ExpenseId },
     Delete { id: ExpenseId },
+    ListForUser { user_id: UserId },
+    ListForGroup { group_id: GroupId },
 }
 
 #[derive(Serialize, Deserialize, Debug)]

@@ -2,9 +2,9 @@ use reqwest::{Client as HttpClient, Url};
 use anyhow::Result;
 use common::{
     ExpenseId, GroupId, UserId, api::{
-        ApiResponse, BalanceRequest, CreateExpenseResponse, CreateGroupResponse,
+        ApiResponse, BalanceEntry, BalanceRequest, CreateExpenseResponse, CreateGroupResponse,
         ExpenseRequest, GetExpenseResponse, GetGroupResponse, GetUserResponse,
-        GroupRequest, RegisterResponse, UserRequest,
+        GroupBalance, GroupRequest, RegisterResponse, UserRequest,
     }
 };
 
@@ -259,6 +259,70 @@ impl KvittisClient {
         match resp.status().is_success() {
             true => Ok(()),
             false => Err(anyhow::anyhow!("Failed to add user to group")),
+        }
+    }
+
+    pub async fn list_expenses_for_user(&self, user_id: UserId) -> Result<Vec<GetExpenseResponse>> {
+        let req = ExpenseRequest::ListForUser { user_id };
+        let resp = self
+            .http
+            .post(self.url.join(EXPENSE_ENDPOINT)?)
+            .json(&req)
+            .send()
+            .await?;
+        dbg!(&resp);
+        let resp = resp.json::<ApiResponse<Vec<GetExpenseResponse>>>().await?;
+        match resp {
+            ApiResponse::Success(r) => Ok(r),
+            ApiResponse::Error { message } => Err(anyhow::anyhow!(message)),
+        }
+    }
+
+    pub async fn list_expenses_for_group(&self, group_id: GroupId) -> Result<Vec<GetExpenseResponse>> {
+        let req = ExpenseRequest::ListForGroup { group_id };
+        let resp = self
+            .http
+            .post(self.url.join(EXPENSE_ENDPOINT)?)
+            .json(&req)
+            .send()
+            .await?;
+        dbg!(&resp);
+        let resp = resp.json::<ApiResponse<Vec<GetExpenseResponse>>>().await?;
+        match resp {
+            ApiResponse::Success(r) => Ok(r),
+            ApiResponse::Error { message } => Err(anyhow::anyhow!(message)),
+        }
+    }
+
+    pub async fn get_user_balances(&self, user_id: UserId) -> Result<Vec<BalanceEntry>> {
+        let req = BalanceRequest::User { user_id };
+        let resp = self
+            .http
+            .post(self.url.join(BALANCE_ENDPOINT)?)
+            .json(&req)
+            .send()
+            .await?;
+        dbg!(&resp);
+        let resp = resp.json::<ApiResponse<Vec<BalanceEntry>>>().await?;
+        match resp {
+            ApiResponse::Success(r) => Ok(r),
+            ApiResponse::Error { message } => Err(anyhow::anyhow!(message)),
+        }
+    }
+
+    pub async fn get_group_balances(&self, group_id: GroupId) -> Result<Vec<GroupBalance>> {
+        let req = BalanceRequest::Group { group_id };
+        let resp = self
+            .http
+            .post(self.url.join(BALANCE_ENDPOINT)?)
+            .json(&req)
+            .send()
+            .await?;
+        dbg!(&resp);
+        let resp = resp.json::<ApiResponse<Vec<GroupBalance>>>().await?;
+        match resp {
+            ApiResponse::Success(r) => Ok(r),
+            ApiResponse::Error { message } => Err(anyhow::anyhow!(message)),
         }
     }
 }
