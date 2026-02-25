@@ -7,20 +7,18 @@ mod types;
 
 use crate::db::db_sqlite::SqliteStore;
 use crate::state::AppState;
-use crate::{api::delete_user, db::db_file::FileStore};
+use crate::db::db_file::FileStore;
 use axum::{
-    routing::{delete, get, post},
+    routing::post,
     Router,
 };
 use clap::Parser;
 use std::{net::SocketAddr, path::Path};
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
-use tracing::info; // adjust if crate name differs
+use tracing::info;
 
-use crate::api::{
-    add_friend, create_expense, create_group, delete_expense, delete_group, get_expense, get_group, get_group_balances, get_user, get_user_balances, get_users, new_group_member, register_user, search_groups, search_users
-};
+use crate::api::{balance_handler, expense_handler, group_handler, user_handler};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -46,25 +44,12 @@ async fn main() -> anyhow::Result<()> {
         }
     };
 
-    /* API routes
-    * TODO: Make the api more similar*/
+    /* API routes */
     let app = Router::new()
-        .route("/register", post(register_user))
-        .route("/user/{user_id}", get(get_user))
-        .route("/user/{user_id}", delete(delete_user))
-        .route("/users", get(get_users))
-        .route("/search_user", post(search_users))
-        .route("/friend", post(add_friend))
-        .route("/create_group", post(create_group))
-        .route("/group/{group_id}", get(get_group))
-        .route("/search_group", post(search_groups))
-        .route("/new_group_member", post(new_group_member))
-        .route("/group/{group_id}", delete(delete_group))
-        .route("/create_expense", post(create_expense))
-        .route("/get_expense", post(get_expense))
-        .route("/delete_expense", post(delete_expense))
-        .route("/balances/{user_id}", get(get_user_balances))
-        .route("/group_balances/{group_id}", get(get_group_balances))
+        .route("/api/user",    post(user_handler))
+        .route("/api/group",   post(group_handler))
+        .route("/api/expense", post(expense_handler))
+        .route("/api/balance", post(balance_handler))
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
         .with_state(state.clone());
 
@@ -72,17 +57,11 @@ async fn main() -> anyhow::Result<()> {
     let addr = SocketAddr::new(ip, args.port);
     let listener = tokio::net::TcpListener::bind(addr).await?;
     println!("Listening on {addr}");
-    // let shutdown_state = state.clone();
 
     axum::serve(listener, app)
         .with_graceful_shutdown(async move {
             let _ = tokio::signal::ctrl_c().await;
             info!("Shutdown");
-            // if let Err(e) = shutdown_state.commit_all() {
-            //     eprintln!("Failed to commit databases: {e}");
-            // } else {
-            //     println!("Databases committed (Ctrl+C).");
-            // }
         })
         .await?;
 

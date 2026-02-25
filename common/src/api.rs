@@ -1,10 +1,7 @@
 use crate::{Expense, ExpenseId, Group, GroupId, User, UserId};
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize, Debug)]
-pub struct RegisterRequest {
-    pub username: String,
-}
+// ── Response types ────────────────────────────────────────────────────────────
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RegisterResponse {
@@ -20,44 +17,10 @@ pub struct GetUserResponse {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct SearchUserRequest {
-    pub query: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct FriendRequest {
-    pub user_id: UserId,
-    pub friend_id: UserId,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct CreateGroupRequest {
-    pub name: String,
-    pub owner_id: UserId,
-    pub members: Vec<UserId>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
 pub struct CreateGroupResponse {
     pub id: GroupId,
     pub name: String,
 }
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct SearchGroupRequest {
-    pub query: String,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct NewGroupMemberRequest {
-    pub group_id: GroupId,
-    pub new_member: UserId,
-}
-
-// #[derive(Serialize, Deserialize, Debug)]
-// pub struct GetGroupRequest {
-//     pub id: GroupId,
-// }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GetGroupResponse {
@@ -65,15 +28,6 @@ pub struct GetGroupResponse {
     pub name: String,
     pub owner_id: UserId,
     pub members: Vec<UserId>,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
-pub struct CreateExpenseRequest {
-    pub payer: UserId,
-    pub participants: Vec<UserId>,
-    pub amount: i64,
-    pub description: Option<String>,
-    pub group_id: Option<GroupId>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -88,11 +42,6 @@ pub struct CreateExpenseResponse {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
-pub struct GetExpenseRequest {
-    pub id: ExpenseId,
-}
-
-#[derive(Serialize, Deserialize, Debug)]
 pub struct GetExpenseResponse {
     pub id: ExpenseId,
     pub payer: UserId,
@@ -103,10 +52,85 @@ pub struct GetExpenseResponse {
     pub timestamp_ms: i64,
 }
 
+// ── Internal structs used by the state/db layer ───────────────────────────────
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct CreateGroupRequest {
+    pub name: String,
+    pub owner_id: UserId,
+    pub members: Vec<UserId>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct NewGroupMemberRequest {
+    pub group_id: GroupId,
+    pub new_member: UserId,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct CreateExpenseRequest {
+    pub payer: UserId,
+    pub participants: Vec<UserId>,
+    pub amount: i64,
+    pub description: Option<String>,
+    pub group_id: Option<GroupId>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GetExpenseRequest {
+    pub id: ExpenseId,
+}
+
 #[derive(Serialize, Deserialize, Debug)]
 pub struct DeleteExpenseRequest {
     pub id: ExpenseId,
 }
+
+// ── Request enums (one per resource, action-based) ───────────────────────────
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(tag = "action", rename_all = "snake_case")]
+pub enum UserRequest {
+    Register { username: String },
+    Get { user_id: UserId },
+    Delete { user_id: UserId },
+    List,
+    Search { query: String },
+    AddFriend { user_id: UserId, friend_id: UserId },
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(tag = "action", rename_all = "snake_case")]
+pub enum GroupRequest {
+    Create { name: String, owner_id: UserId, members: Vec<UserId> },
+    Get { group_id: GroupId },
+    Delete { group_id: GroupId },
+    Search { query: String },
+    AddMember { group_id: GroupId, new_member: UserId },
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(tag = "action", rename_all = "snake_case")]
+pub enum ExpenseRequest {
+    Create {
+        payer: UserId,
+        participants: Vec<UserId>,
+        amount: i64,
+        description: Option<String>,
+        group_id: Option<GroupId>,
+    },
+    Get { id: ExpenseId },
+    Delete { id: ExpenseId },
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+#[serde(tag = "action", rename_all = "snake_case")]
+pub enum BalanceRequest {
+    User { user_id: UserId },
+    Group { group_id: GroupId },
+}
+
+// ── Shared types ──────────────────────────────────────────────────────────────
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BalanceEntry {

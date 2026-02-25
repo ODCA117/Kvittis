@@ -292,7 +292,7 @@ impl Store for SqliteStore {
             g.members.push(user_id);
         }
 
-        Ok(Some(map.values().cloned().collect::<Vec<GroupRow>>()[0].clone()))
+        Ok(map.into_values().next())
     }
 
     async fn get_groups(&self) -> Result<Vec<GroupRow>> {
@@ -523,7 +523,7 @@ impl Store for SqliteStore {
 
         }
 
-        Ok(Some(map.values().cloned().collect::<Vec<ExpenseRow>>()[0].clone()))
+        Ok(map.into_values().next())
     }
 }
 
