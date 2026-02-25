@@ -132,17 +132,20 @@ pub enum BalanceRequest {
 
 // ── Shared types ──────────────────────────────────────────────────────────────
 
+/// Amount is in minor units (cents/öre). Positive means `other` owes the
+/// requesting user; negative means the requesting user owes `other`.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BalanceEntry {
     pub other: UserId,
-    pub amount: f64,
+    pub amount: i64,
 }
 
+/// Amount is in minor units (cents/öre). `from` owes `to` this amount.
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GroupBalance {
     pub from: UserId,
     pub to: UserId,
-    pub amount: f64,
+    pub amount: i64,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
