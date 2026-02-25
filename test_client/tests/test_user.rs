@@ -4,12 +4,13 @@ use anyhow::anyhow;
 use common::{GroupId, User, UserId, api::{GetGroupResponse, GetUserResponse}};
 use rust_kvittis_client::kvittis_client::KvittisClient;
 
+const BASE_URL: &str = "http://localhost:3000";
 
 // ====== Basic Testing ======
 
 #[tokio::test]
 async fn test_register_user() -> anyhow::Result<()> {
-    let client = KvittisClient::new("http://localhost:3000")?;
+    let client = KvittisClient::new(BASE_URL)?;
     let username = "register_test_user";
     let user = client.register_user(username).await?;
     assert_eq!(user.username, username);
@@ -23,7 +24,7 @@ async fn test_register_user() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_delete_user() -> anyhow::Result<()> {
-    let client = KvittisClient::new("http://localhost:3000")?;
+    let client = KvittisClient::new(BASE_URL)?;
     let username = "delete_test_user";
     let user = client.register_user(username).await?;
 
@@ -42,7 +43,7 @@ async fn test_delete_user() -> anyhow::Result<()> {
 // It is just a client so maybe I can implement it anyway.
 #[tokio::test]
 async fn test_get_users() -> anyhow::Result<()> {
-    let client = KvittisClient::new("http://localhost:3000")?;
+    let client = KvittisClient::new(BASE_URL)?;
     let username1 = "get_users_test_user1";
     let username2 = "get_users_test_user2";
     let user1 = client.register_user(username1).await?;
@@ -61,7 +62,7 @@ async fn test_get_users() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_search_users() -> anyhow::Result<()> {
-    let client = KvittisClient::new("http://localhost:3000")?;
+    let client = KvittisClient::new(BASE_URL)?;
     let username1 = "search_users_test_user1";
     let username2 = "search_users_test_user2";
     let user1 = client.register_user(username1).await?;
@@ -86,7 +87,7 @@ async fn test_search_users() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_create_group() -> anyhow::Result<()> {
-    let client = KvittisClient::new("http://localhost:3000")?;
+    let client = KvittisClient::new(BASE_URL)?;
     let user = client.register_user("create_group_owner").await?;
     let group_name = "create_test_group";
     let group = client.create_group(group_name, user.id, vec![user.id]).await?;
@@ -102,7 +103,7 @@ async fn test_create_group() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_delete_group() -> anyhow::Result<()> {
-    let client = KvittisClient::new("http://localhost:3000")?;
+    let client = KvittisClient::new(BASE_URL)?;
     let user = client.register_user("delete_group_owner").await?;
     let group_name = "delete_test_group";
     let group = client.create_group(group_name, user.id, vec![user.id]).await?;
@@ -122,7 +123,7 @@ async fn test_delete_group() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_add_user_to_group() -> anyhow::Result<()> {
-    let client = KvittisClient::new("http://localhost:3000")?;
+    let client = KvittisClient::new(BASE_URL)?;
     let owner = client.register_user("add_user_to_group_owner").await?;
     let member = client.register_user("add_user_to_group_member").await?;
     let group_name = "add_user_to_group_test_group";
@@ -142,7 +143,7 @@ async fn test_add_user_to_group() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_get_group_by_name() -> anyhow::Result<()> {
-    let client = KvittisClient::new("http://localhost:3000")?;
+    let client = KvittisClient::new(BASE_URL)?;
     let owner = client.register_user("get_group_by_name_owner").await?;
     let group_name = "get_group_by_name_test_group";
     let group = client.create_group(group_name, owner.id, vec![owner.id]).await?;
@@ -165,7 +166,7 @@ async fn test_get_group_by_name() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_create_expense() -> anyhow::Result<()> {
-    let client = KvittisClient::new("http://localhost:3000")?;
+    let client = KvittisClient::new(BASE_URL)?;
     let payer = client.register_user("create_expense_payer").await?;
     let borrower1 = client.register_user("create_expense_borrower1").await?;
     let borrower2 = client.register_user("create_expense_borrower2").await?;
@@ -196,7 +197,7 @@ async fn test_create_expense() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_get_expense() -> anyhow::Result<()> {
-    let client = KvittisClient::new("http://localhost:3000")?;
+    let client = KvittisClient::new(BASE_URL)?;
     let payer = client.register_user("get_expense_payer").await?;
     let borrower1 = client.register_user("get_expense_borrower1").await?;
     let borrower2 = client.register_user("get_expense_borrower2").await?;
@@ -228,7 +229,7 @@ async fn test_get_expense() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_delete_expense() -> anyhow::Result<()> {
-    let client = KvittisClient::new("http://localhost:3000")?;
+    let client = KvittisClient::new(BASE_URL)?;
     let payer = client.register_user("delete_expense_payer").await?;
     let borrower1 = client.register_user("delete_expense_borrower1").await?;
     let borrower2 = client.register_user("delete_expense_borrower2").await?;
