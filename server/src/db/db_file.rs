@@ -165,6 +165,14 @@ impl Store for FileStore {
         Ok(expense)
     }
 
+    async fn delete_expense(&self, id: ExpenseId) -> Result<()> {
+        let mut state = self.state.write().await;
+        state.expenses.remove(&id);
+        drop(state);
+        self.persist().await?;
+        Ok(())
+    }
+
     async fn get_expense(&self, id: ExpenseId) -> Result<Option<ExpenseRow>> {
         Ok(self.state.read().await.expenses.get(&id).cloned())
     }

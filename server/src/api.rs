@@ -5,7 +5,7 @@ use axum::{
 };
 use common::{
     GroupId, User, UserId, api::{
-        ApiResponse, BalanceEntry, CreateExpenseRequest, CreateExpenseResponse, CreateGroupRequest, CreateGroupResponse, FriendRequest, GetGroupResponse, GetUserResponse, GroupBalance, NewGroupMemberRequest, RegisterRequest, RegisterResponse, SearchUserRequest
+        ApiResponse, BalanceEntry, CreateExpenseRequest, CreateExpenseResponse, CreateGroupRequest, CreateGroupResponse, DeleteExpenseRequest, FriendRequest, GetExpenseRequest, GetExpenseResponse, GetGroupResponse, GetUserResponse, GroupBalance, NewGroupMemberRequest, RegisterRequest, RegisterResponse, SearchUserRequest
     }
 };
 use serde::Serialize;
@@ -239,6 +239,34 @@ pub async fn create_expense(
     debug!("Create expense: {:?}", payload);
     match state.create_expense(payload).await {
         Ok(e) => json_success(StatusCode::CREATED, e.into()),
+        Err(_) => json_error(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed to create expense",
+        ),
+    }
+}
+
+pub async fn get_expense(
+    State(state): State<AppState>,
+    Json(payload): Json<GetExpenseRequest>,
+) -> (StatusCode, Json<ApiResponse<GetExpenseResponse>>) {
+    debug!("Get expense: {:?}", payload);
+    match state.get_expense(payload).await {
+        Ok(e) => json_success(StatusCode::OK, e.into()),
+        Err(_) => json_error(
+            StatusCode::INTERNAL_SERVER_ERROR,
+            "Failed to get expense",
+        ),
+    }
+}
+
+pub async fn delete_expense(
+    State(state): State<AppState>,
+    Json(payload): Json<DeleteExpenseRequest>,
+) -> (StatusCode, Json<ApiResponse<serde_json::Value>>) {
+    debug!("Create expense: {:?}", payload);
+    match state.delete_expense(payload).await {
+        Ok(e) => json_success(StatusCode::OK, serde_json::json!({"status": "Expense deleted"})),
         Err(_) => json_error(
             StatusCode::INTERNAL_SERVER_ERROR,
             "Failed to create expense",

@@ -1,8 +1,11 @@
 
-/// These are more integration tests and scenario tests that are more complex.
+// These are more integration tests and scenario tests that are more complex.
 use anyhow::anyhow;
 use common::{GroupId, User, UserId, api::{GetGroupResponse, GetUserResponse}};
 use rust_kvittis_client::kvittis_client::KvittisClient;
+
+
+// ====== Basic Testing ======
 
 #[tokio::test]
 async fn test_register_user() -> anyhow::Result<()> {
@@ -160,3 +163,105 @@ async fn test_get_group_by_name() -> anyhow::Result<()> {
     Ok(())
 }
 
+#[tokio::test]
+async fn test_create_expense() -> anyhow::Result<()> {
+    let client = KvittisClient::new("http://localhost:3000")?;
+    let payer = client.register_user("create_expense_payer").await?;
+    let borrower1 = client.register_user("create_expense_borrower1").await?;
+    let borrower2 = client.register_user("create_expense_borrower2").await?;
+    let description = "Test expense".to_string();
+
+    let expense = client.create_expense(
+        payer.id,
+        vec![payer.id, borrower1.id, borrower2.id],
+        100,
+        Some(description.clone()),
+        None,
+    ).await?;
+
+    assert_eq!(expense.payer, payer.id);
+    assert_eq!(description, expense.description.unwrap());
+    assert!(expense.participants.len() == 3);
+    assert!(expense.participants.contains(&borrower1.id));
+    assert!(expense.participants.contains(&borrower2.id));
+    assert!(expense.participants.contains(&payer.id));
+
+    // Cleanup
+    client.delete_expense(expense.id).await?;
+    client.delete_user(payer.id).await?;
+    client.delete_user(borrower1.id).await?;
+    client.delete_user(borrower2.id).await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_get_expense() -> anyhow::Result<()> {
+    let client = KvittisClient::new("http://localhost:3000")?;
+    let payer = client.register_user("get_expense_payer").await?;
+    let borrower1 = client.register_user("get_expense_borrower1").await?;
+    let borrower2 = client.register_user("get_expense_borrower2").await?;
+    let description = "Test expense".to_string();
+
+    let expense = client.create_expense(
+        payer.id,
+        vec![payer.id, borrower1.id, borrower2.id],
+        100,
+        Some(description.clone()),
+        None,
+    ).await?;
+
+    let expense = client.get_expense(expense.id).await?;
+    assert_eq!(expense.payer, payer.id);
+    assert_eq!(description, expense.description.unwrap());
+    assert!(expense.participants.len() == 3);
+    assert!(expense.participants.contains(&borrower1.id));
+    assert!(expense.participants.contains(&borrower2.id));
+    assert!(expense.participants.contains(&payer.id));
+
+    // Cleanup
+    client.delete_expense(expense.id).await?;
+    client.delete_user(payer.id).await?;
+    client.delete_user(borrower1.id).await?;
+    client.delete_user(borrower2.id).await?;
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_delete_expense() -> anyhow::Result<()> {
+    let client = KvittisClient::new("http://localhost:3000")?;
+    let payer = client.register_user("delete_expense_payer").await?;
+    let borrower1 = client.register_user("delete_expense_borrower1").await?;
+    let borrower2 = client.register_user("delete_expense_borrower2").await?;
+    let description = "Test expense".to_string();
+
+    let expense = client.create_expense(
+        payer.id,
+        vec![payer.id, borrower1.id, borrower2.id],
+        100,
+        Some(description.clone()),
+        None,
+    ).await?;
+
+    assert_eq!(expense.payer, payer.id);
+    assert_eq!(description, expense.description.unwrap());
+    assert!(expense.participants.len() == 3);
+    assert!(expense.participants.contains(&borrower1.id));
+    assert!(expense.participants.contains(&borrower2.id));
+    assert!(expense.participants.contains(&payer.id));
+
+    // Cleanup
+    client.delete_expense(expense.id).await?;
+    client.delete_user(payer.id).await?;
+    client.delete_user(borrower1.id).await?;
+    client.delete_user(borrower2.id).await?;
+    Ok(())
+}
+
+
+// ====== Expense Testing User ======
+
+// #[tokio::test]
+// async fn test_expense_user_
+
+
+// ====== Expense Testing Group ======

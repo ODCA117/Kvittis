@@ -19,7 +19,7 @@ use tower_http::trace::TraceLayer;
 use tracing::info; // adjust if crate name differs
 
 use crate::api::{
-    add_friend, create_expense, create_group, delete_group, get_group, get_group_balances, get_user, get_user_balances, get_users, new_group_member, register_user, search_groups, search_users
+    add_friend, create_expense, create_group, delete_expense, delete_group, get_expense, get_group, get_group_balances, get_user, get_user_balances, get_users, new_group_member, register_user, search_groups, search_users
 };
 
 #[tokio::main]
@@ -46,6 +46,8 @@ async fn main() -> anyhow::Result<()> {
         }
     };
 
+    /* API routes
+    * TODO: Make the api more similar*/
     let app = Router::new()
         .route("/register", post(register_user))
         .route("/user/{user_id}", get(get_user))
@@ -58,7 +60,9 @@ async fn main() -> anyhow::Result<()> {
         .route("/search_group", post(search_groups))
         .route("/new_group_member", post(new_group_member))
         .route("/group/{group_id}", delete(delete_group))
-        .route("/expense", post(create_expense))
+        .route("/create_expense", post(create_expense))
+        .route("/get_expense", post(get_expense))
+        .route("/delete_expense", post(delete_expense))
         .route("/balances/{user_id}", get(get_user_balances))
         .route("/group_balances/{group_id}", get(get_group_balances))
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))

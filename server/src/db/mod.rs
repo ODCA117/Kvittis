@@ -26,6 +26,7 @@ pub trait Store: Send + Sync {
 
     // --- Expenses ---
     async fn create_expense(&self, expense: ExpenseRow) -> Result<ExpenseRow>;
+    async fn delete_expense(&self, id: ExpenseId) -> Result<()>;
     async fn get_expense(&self, id: ExpenseId) -> Result<Option<ExpenseRow>>;
 }
 
@@ -70,7 +71,7 @@ pub struct ExpenseRow {
     pub id: ExpenseId,
     pub payer: UserId,
     pub participants: Vec<UserId>,
-    pub amount: u64,
+    pub amount: i64,
     pub description: Option<String>,
     pub group_id: Option<GroupId>,
     pub timestamp_ms: i64,
@@ -81,7 +82,7 @@ impl ExpenseRow {
         id: ExpenseId,
         payer: UserId,
         participants: Vec<UserId>,
-        amount: u64,
+        amount: i64,
         description: Option<String>,
         group_id: Option<GroupId>,
         timestamp_ms: i64,

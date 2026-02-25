@@ -71,7 +71,7 @@ pub struct GetGroupResponse {
 pub struct CreateExpenseRequest {
     pub payer: UserId,
     pub participants: Vec<UserId>,
-    pub amount: u64,
+    pub amount: i64,
     pub description: Option<String>,
     pub group_id: Option<GroupId>,
 }
@@ -81,10 +81,31 @@ pub struct CreateExpenseResponse {
     pub id: ExpenseId,
     pub payer: UserId,
     pub participants: Vec<UserId>,
-    pub amount: u64,
+    pub amount: i64,
     pub description: Option<String>,
     pub group_id: Option<GroupId>,
     pub timestamp_ms: i64,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GetExpenseRequest {
+    pub id: ExpenseId,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct GetExpenseResponse {
+    pub id: ExpenseId,
+    pub payer: UserId,
+    pub participants: Vec<UserId>,
+    pub amount: i64,
+    pub description: Option<String>,
+    pub group_id: Option<GroupId>,
+    pub timestamp_ms: i64,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct DeleteExpenseRequest {
+    pub id: ExpenseId,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -174,6 +195,20 @@ impl From<CreateExpenseResponse> for Expense {
 impl From<Expense> for CreateExpenseResponse {
     fn from(value: Expense) -> Self {
         CreateExpenseResponse {
+            id: value.id,
+            payer: value.payer,
+            participants: value.participants,
+            amount: value.amount,
+            description: value.description,
+            group_id: value.group_id,
+            timestamp_ms: value.timestamp_ms,
+        }
+    }
+}
+
+impl From<Expense> for GetExpenseResponse {
+    fn from(value: Expense) -> Self {
+        GetExpenseResponse {
             id: value.id,
             payer: value.payer,
             participants: value.participants,

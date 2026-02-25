@@ -1,8 +1,8 @@
 use reqwest::{Client as HttpClient, Url};
 use anyhow::Result;
 use common::{
-    Expense, GroupId, User, UserId, api::{
-        CreateExpenseRequest, CreateGroupRequest, CreateGroupResponse, FriendRequest, GetGroupResponse, GetUserResponse, NewGroupMemberRequest, RegisterRequest, RegisterResponse, SearchGroupRequest, SearchUserRequest
+    Expense, ExpenseId, GroupId, User, UserId, api::{
+        CreateExpenseRequest, CreateExpenseResponse, CreateGroupRequest, CreateGroupResponse, DeleteExpenseRequest, FriendRequest, GetExpenseRequest, GetExpenseResponse, GetGroupResponse, GetUserResponse, NewGroupMemberRequest, RegisterRequest, RegisterResponse, SearchGroupRequest, SearchUserRequest
     }
 };
 
@@ -11,7 +11,11 @@ const GET_USER_ENDPOINT: &str = "/user/";
 const SEARCH_USER_ENDPOINT: &str = "/search_user";
 const GET_USERS_ENDPOINT: &str = "/users";
 const ADD_FRIEND_ENDPOINT: &str = "/friend";
-const CREATE_EXPENSE_ENDPOINT: &str = "/expense";
+
+const CREATE_EXPENSE_ENDPOINT: &str = "/create_expense";
+const GET_EXPENSE_ENDPOINT: &str = "/get_expense";
+const DELETE_EXPENSE_ENDPOINT: &str = "/delete_expense";
+
 const CREATE_GROUP_ENDPOINT: &str = "/create_group";
 const GET_GROUP_ENDPOINT: &str = "/group/";
 const DELETE_GROUP_ENDPOINT: &str = "/group/";
@@ -100,10 +104,10 @@ impl KvittisClient {
         &self,
         payer: UserId,
         participants: Vec<UserId>,
-        amount: u64,
+        amount: i64,
         description: Option<String>,
         group_id: Option<GroupId>,
-    ) -> Result<CreateExpenseRequest> {
+    ) -> Result<CreateExpenseResponse> {
         let url = self.url.join(CREATE_EXPENSE_ENDPOINT)?;
         let request = CreateExpenseRequest {
             payer,
@@ -115,7 +119,27 @@ impl KvittisClient {
 
         let resp = self.http.post(url).json(&request).send().await?;
         dbg!(&resp);
-        let resp = resp.json::<CreateExpenseRequest>().await?;
+        let resp = resp.json::<CreateExpenseResponse>().await?;
+        Ok(resp)
+    }
+
+    pub async fn delete_expense(&self, expense_id: ExpenseId) -> Result<()> {
+        let url = self.url.join(DELETE_EXPENSE_ENDPOINT)?;
+        let payload = DeleteExpenseRequest { id: expense_id };
+        let resp = self.http.post(url).json(&payload).send().await?;
+        dbg!(&resp);
+        match resp.status().is_success() {
+            true => Ok(()),
+            false => Err(anyhow::anyhow!("Failed to delete expense")),
+        }
+    }
+
+    pub async fn get_expense(&self, expense_id: ExpenseId) -> Result<GetExpenseResponse> {
+        let url = self.url.join(GET_EXPENSE_ENDPOINT)?;
+        let payload = GetExpenseRequest { id: expense_id };
+        let resp = self.http.post(url).json(&payload).send().await?;
+        dbg!(&resp);
+        let resp = resp.json::<GetExpenseResponse>().await?;
         Ok(resp)
     }
 

@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use crate::db::{ExpenseRow, GroupRow, Store, UserRow};
 use common::{
-    Expense, Group, GroupId, User, UserId, api::{CreateExpenseRequest, CreateGroupRequest, NewGroupMemberRequest}
+    Expense, Group, GroupId, User, UserId, api::{CreateExpenseRequest, CreateGroupRequest, DeleteExpenseRequest, GetExpenseRequest, NewGroupMemberRequest}
 };
 
 struct AppStateData {
@@ -133,6 +133,18 @@ impl AppState {
         };
         let stored = guard.store.create_expense(expense.into()).await?;
         Ok(stored.into())
+    }
+
+    pub async fn get_expense(&self, expense_req: GetExpenseRequest) -> Result<Expense> {
+        let guard = self.data.write().await;
+        let stored = guard.store.get_expense(expense_req.id).await?.ok_or_else(|| anyhow!("Expense not found"))?;
+        Ok(stored.into())
+    }
+
+    pub async fn delete_expense(&self, expense_req: DeleteExpenseRequest) -> Result<()> {
+        let guard = self.data.write().await;
+        guard.store.delete_expense(expense_req.id).await?;
+        Ok(())
     }
 
     pub async fn create_group(&self, group_req: CreateGroupRequest) -> Result<Group> {

@@ -290,18 +290,6 @@ impl Store for SqliteStore {
             let _username: String = r.get("username");
             let g = map.entry(id).or_insert( GroupRow { id, name, owner_id, members: vec![] });
             g.members.push(user_id);
-
-            // let user = map.entry(user_id).or_insert(UserRow {
-            //     id: user_id,
-            //     username,
-            //     friends: vec![],
-            // });
-            // if let Some(friend_id) = friend_id {
-            //     user.friends.push(friend_id);
-            // }
-
-            // let friend_username: Option<String> = r.try_get("friend_username").ok();
-            // println!("group: {}, {}, {}, user: {:?}, {:?}", group_id, group_name, group_owner, user_id, username);
         }
 
         Ok(Some(map.values().cloned().collect::<Vec<GroupRow>>()[0].clone()))
@@ -424,12 +412,118 @@ impl Store for SqliteStore {
     }
 
     // --- Expenses ---
-    async fn create_expense(&self, _expense: ExpenseRow) -> Result<ExpenseRow> {
-        todo!();
+    async fn create_expense(&self, expense: ExpenseRow) -> Result<ExpenseRow> {
+        // Insert the expense in the expenses table.
+        print_sql_result(
+            sqlx::query(
+                r#"
+                    INSERT INTO expenses (id, payer_id, amount, description, group_id, timestamp_ms)
+                    VALUES ($1, $2, $3, $4, $5, $6)
+                "#,
+            )
+            .bind(expense.id)
+            .bind(expense.payer)
+            .bind(expense.amount)
+            .bind(&expense.description)
+            .bind(expense.group_id)
+            .bind(expense.timestamp_ms)
+            .execute(&self.pool)
+            .await
+        )?;
+
+        // Insert the participants in the expense_participants table.
+        for participant in &expense.participants {
+            print_sql_result(
+                sqlx::query(
+                    r#"
+                        INSERT INTO expense_participants (expense_id, user_id)
+                        VALUES ($1, $2)
+                    "#,
+                )
+                .bind(expense.id)
+                .bind(participant)
+                .execute(&self.pool)
+                .await
+            )?;
+        }
+
+        Ok(expense)
+    }
+    
+    async fn delete_expense(&self, id: ExpenseId) -> Result<()> {
+        // Remove the participants first due to foreign key constraint
+    
+        print_sql_result(
+            sqlx::query(
+                r#"
+                    DELETE FROM expense_participants WHERE expense_id = $1
+                "#,
+            )
+            .bind(id)
+            .execute(&self.pool)
+            .await
+        )?;
+
+        // Remove the expense
+        print_sql_result(
+            sqlx::query(
+                r#"
+                    DELETE FROM expenses
+                    WHERE id = $1
+                "#,
+            )
+            .bind(id)
+            .execute(&self.pool)
+            .await
+        )?;
+
+        Ok(())
     }
 
-    async fn get_expense(&self, _id: ExpenseId) -> Result<Option<ExpenseRow>> {
-        todo!();
+    async fn get_expense(&self, id: ExpenseId) -> Result<Option<ExpenseRow>> {
+        // Get the expense and all the participants in one query using LEFT JOIN.
+        let expense = print_sql_result(
+            sqlx::query(
+                r#"
+                    SELECT
+                        e.id                AS expense_id,
+                        e.payer_id          AS payer,
+                        e.amount            AS amount,
+                        e.description       AS description,
+                        e.group_id          AS group_id,
+                        e.timestamp_ms      AS timestamp_ms,
+                        u.id                AS user_id,
+                        u.username          AS username
+                    FROM expenses e
+                    LEFT JOIN expense_participants ep
+                        ON e.id = ep.expense_id
+                    LEFT JOIN users u
+                        ON ep.user_id = u.id
+                    WHERE e.id = $1
+                    ORDER BY e.id;
+                "#,
+            )
+            .bind(id)
+            .fetch_all(&self.pool)
+            .await,
+        )?;
+
+        let mut map = HashMap::new();
+        for r in expense.iter() {
+            let id: ExpenseId = r.get("expense_id");
+            let payer: UserId = r.get("payer");
+            let amount: i64 = r.get("amount");
+            let description: Option<String> = r.try_get("description").ok();
+            let group_id: Option<GroupId> = r.try_get("group_id").ok();
+            let timestamp_ms: i64 = r.get("timestamp_ms");
+            let user_id: UserId = r.get("user_id");
+            let _username: String = r.get("username");
+            let e = map.entry(id).or_insert( ExpenseRow { id, payer, participants: vec![], amount, description, group_id, timestamp_ms });
+            e.participants.push(user_id);
+
+        }
+
+        Ok(Some(map.values().cloned().collect::<Vec<ExpenseRow>>()[0].clone()))
     }
 }
 
