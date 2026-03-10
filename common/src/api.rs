@@ -102,11 +102,24 @@ pub enum UserRequest {
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(tag = "action", rename_all = "snake_case")]
 pub enum GroupRequest {
-    Create { name: String, owner_id: UserId, members: Vec<UserId> },
-    Get { group_id: GroupId },
-    Delete { group_id: GroupId },
-    Search { query: String },
-    AddMember { group_id: GroupId, new_member: UserId },
+    Create {
+        name: String,
+        owner_id: UserId,
+        members: Vec<UserId>,
+    },
+    Get {
+        group_id: GroupId,
+    },
+    Delete {
+        group_id: GroupId,
+    },
+    Search {
+        query: String,
+    },
+    AddMember {
+        group_id: GroupId,
+        new_member: UserId,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -119,10 +132,18 @@ pub enum ExpenseRequest {
         description: Option<String>,
         group_id: Option<GroupId>,
     },
-    Get { id: ExpenseId },
-    Delete { id: ExpenseId },
-    ListForUser { user_id: UserId },
-    ListForGroup { group_id: GroupId },
+    Get {
+        id: ExpenseId,
+    },
+    Delete {
+        id: ExpenseId,
+    },
+    ListForUser {
+        user_id: UserId,
+    },
+    ListForGroup {
+        group_id: GroupId,
+    },
 }
 
 #[derive(Serialize, Deserialize, Debug)]

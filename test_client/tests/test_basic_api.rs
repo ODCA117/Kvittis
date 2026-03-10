@@ -1,7 +1,9 @@
-
 // These are more integration tests and scenario tests that are more complex.
 use anyhow::anyhow;
-use common::{GroupId, User, UserId, api::{GetGroupResponse, GetUserResponse}};
+use common::{
+    api::{GetGroupResponse, GetUserResponse},
+    GroupId, User, UserId,
+};
 use rust_kvittis_client::kvittis_client::KvittisClient;
 
 const BASE_URL: &str = "http://localhost:3000";
@@ -67,7 +69,7 @@ async fn test_search_users() -> anyhow::Result<()> {
     let username2 = "search_users_test_user2";
     let user1 = client.register_user(username1).await?;
     let user2 = client.register_user(username2).await?;
-    
+
     let search_results = client.search_users("search_users_test").await?;
     dbg!(&search_results);
     let usernames: Vec<String> = search_results.iter().map(|u| u.username.clone()).collect();
@@ -90,7 +92,9 @@ async fn test_create_group() -> anyhow::Result<()> {
     let client = KvittisClient::new(BASE_URL)?;
     let user = client.register_user("create_group_owner").await?;
     let group_name = "create_test_group";
-    let group = client.create_group(group_name, user.id, vec![user.id]).await?;
+    let group = client
+        .create_group(group_name, user.id, vec![user.id])
+        .await?;
     assert_eq!(group.name, group_name);
     let resp = client.get_group(group.id).await?;
     assert_eq!(resp.name, group_name);
@@ -106,7 +110,9 @@ async fn test_delete_group() -> anyhow::Result<()> {
     let client = KvittisClient::new(BASE_URL)?;
     let user = client.register_user("delete_group_owner").await?;
     let group_name = "delete_test_group";
-    let group = client.create_group(group_name, user.id, vec![user.id]).await?;
+    let group = client
+        .create_group(group_name, user.id, vec![user.id])
+        .await?;
 
     let resp = client.get_group(group.id).await?;
     assert_eq!(resp.name, group_name);
@@ -127,7 +133,9 @@ async fn test_add_user_to_group() -> anyhow::Result<()> {
     let owner = client.register_user("add_user_to_group_owner").await?;
     let member = client.register_user("add_user_to_group_member").await?;
     let group_name = "add_user_to_group_test_group";
-    let group = client.create_group(group_name, owner.id, vec![owner.id]).await?;
+    let group = client
+        .create_group(group_name, owner.id, vec![owner.id])
+        .await?;
 
     client.add_user_to_group(group.id, member.id).await?;
 
@@ -146,7 +154,9 @@ async fn test_get_group_by_name() -> anyhow::Result<()> {
     let client = KvittisClient::new(BASE_URL)?;
     let owner = client.register_user("get_group_by_name_owner").await?;
     let group_name = "get_group_by_name_test_group";
-    let group = client.create_group(group_name, owner.id, vec![owner.id]).await?;
+    let group = client
+        .create_group(group_name, owner.id, vec![owner.id])
+        .await?;
 
     let resp = client.search_group(group_name).await?;
     let ids: Vec<GroupId> = resp.iter().map(|g| g.id).collect();
@@ -172,13 +182,15 @@ async fn test_create_expense() -> anyhow::Result<()> {
     let borrower2 = client.register_user("create_expense_borrower2").await?;
     let description = "Test expense".to_string();
 
-    let expense = client.create_expense(
-        payer.id,
-        vec![payer.id, borrower1.id, borrower2.id],
-        100,
-        Some(description.clone()),
-        None,
-    ).await?;
+    let expense = client
+        .create_expense(
+            payer.id,
+            vec![payer.id, borrower1.id, borrower2.id],
+            100,
+            Some(description.clone()),
+            None,
+        )
+        .await?;
 
     assert_eq!(expense.payer, payer.id);
     assert_eq!(description, expense.description.unwrap());
@@ -203,13 +215,15 @@ async fn test_get_expense() -> anyhow::Result<()> {
     let borrower2 = client.register_user("get_expense_borrower2").await?;
     let description = "Test expense".to_string();
 
-    let expense = client.create_expense(
-        payer.id,
-        vec![payer.id, borrower1.id, borrower2.id],
-        100,
-        Some(description.clone()),
-        None,
-    ).await?;
+    let expense = client
+        .create_expense(
+            payer.id,
+            vec![payer.id, borrower1.id, borrower2.id],
+            100,
+            Some(description.clone()),
+            None,
+        )
+        .await?;
 
     let expense = client.get_expense(expense.id).await?;
     assert_eq!(expense.payer, payer.id);
@@ -235,13 +249,15 @@ async fn test_delete_expense() -> anyhow::Result<()> {
     let borrower2 = client.register_user("delete_expense_borrower2").await?;
     let description = "Test expense".to_string();
 
-    let expense = client.create_expense(
-        payer.id,
-        vec![payer.id, borrower1.id, borrower2.id],
-        100,
-        Some(description.clone()),
-        None,
-    ).await?;
+    let expense = client
+        .create_expense(
+            payer.id,
+            vec![payer.id, borrower1.id, borrower2.id],
+            100,
+            Some(description.clone()),
+            None,
+        )
+        .await?;
 
     assert_eq!(expense.payer, payer.id);
     assert_eq!(description, expense.description.unwrap());
@@ -258,8 +274,6 @@ async fn test_delete_expense() -> anyhow::Result<()> {
     Ok(())
 }
 
-
 // ====== Expense Testing User ======
 
 // ====== Expense Testing Group ======
-

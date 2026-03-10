@@ -1,3 +1,4 @@
+// use chrono::{DateTime, FixedOffset};
 use uuid::Uuid;
 pub mod api;
 
@@ -10,6 +11,10 @@ pub struct User {
     pub id: UserId,
     pub username: String,
     pub friends: Vec<UserId>,
+    // TODO: Add this
+    // pub email: String,
+    // pub created_at: DateTime<FixedOffset>,
+    // pub updated_at: DateTime<FixedOffset>,
 }
 
 #[derive(Clone, Debug)]

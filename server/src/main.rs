@@ -5,13 +5,10 @@ mod logger;
 mod state;
 mod types;
 
+use crate::db::db_file::FileStore;
 use crate::db::db_sqlite::SqliteStore;
 use crate::state::AppState;
-use crate::db::db_file::FileStore;
-use axum::{
-    routing::post,
-    Router,
-};
+use axum::{Router, routing::post};
 use clap::Parser;
 use std::{net::SocketAddr, path::Path};
 use tower::ServiceBuilder;
@@ -46,8 +43,8 @@ async fn main() -> anyhow::Result<()> {
 
     /* API routes */
     let app = Router::new()
-        .route("/api/user",    post(user_handler))
-        .route("/api/group",   post(group_handler))
+        .route("/api/user", post(user_handler))
+        .route("/api/group", post(group_handler))
         .route("/api/expense", post(expense_handler))
         .route("/api/balance", post(balance_handler))
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))

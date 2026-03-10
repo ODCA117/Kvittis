@@ -1,14 +1,11 @@
-use axum::{
-    Json,
-    extract::State,
-    http::StatusCode,
-};
+use axum::{Json, extract::State, http::StatusCode};
 use common::{
-    User, api::{
+    User,
+    api::{
         ApiResponse, BalanceEntry, BalanceRequest, CreateExpenseResponse, CreateGroupResponse,
-        ExpenseRequest, GetExpenseResponse, GetGroupResponse, GetUserResponse, GroupRequest,
-        GroupBalance, RegisterResponse, UserRequest,
-    }
+        ExpenseRequest, GetExpenseResponse, GetGroupResponse, GetUserResponse, GroupBalance,
+        GroupRequest, RegisterResponse, UserRequest,
+    },
 };
 use serde::Serialize;
 use tracing::debug;
@@ -53,11 +50,18 @@ pub async fn user_handler(
     match payload {
         UserRequest::Register { username } => {
             let id = Uuid::new_v4();
-            let user = User { id, username, friends: vec![] };
+            let user = User {
+                id,
+                username,
+                friends: vec![],
+            };
             debug!("Register user: {:?}", user);
             match state.register_user(user).await {
                 Ok(u) => {
-                    let resp = RegisterResponse { id: u.id, username: u.username };
+                    let resp = RegisterResponse {
+                        id: u.id,
+                        username: u.username,
+                    };
                     json_success(StatusCode::CREATED, serde_json::to_value(resp).unwrap())
                 }
                 Err(_) => json_error(StatusCode::BAD_REQUEST, "Failed to register user"),
@@ -78,7 +82,10 @@ pub async fn user_handler(
         UserRequest::Delete { user_id } => {
             debug!("Delete user: {:?}", user_id);
             match state.delete_user(user_id).await {
-                Ok(_) => json_success(StatusCode::OK, serde_json::json!({"status": "User deleted"})),
+                Ok(_) => json_success(
+                    StatusCode::OK,
+                    serde_json::json!({"status": "User deleted"}),
+                ),
                 Err(_) => json_error(StatusCode::NOT_FOUND, "User not found"),
             }
         }
@@ -108,7 +115,10 @@ pub async fn user_handler(
         UserRequest::AddFriend { user_id, friend_id } => {
             debug!("Add friend: user={:?} friend={:?}", user_id, friend_id);
             match state.add_friend(user_id, friend_id).await {
-                Ok(_) => json_success(StatusCode::OK, serde_json::json!({"status": "friend added"})),
+                Ok(_) => json_success(
+                    StatusCode::OK,
+                    serde_json::json!({"status": "friend added"}),
+                ),
                 Err(_) => json_error(StatusCode::BAD_REQUEST, "user_id or friend_id not found"),
             }
         }
@@ -122,12 +132,23 @@ pub async fn group_handler(
     Json(payload): Json<GroupRequest>,
 ) -> (StatusCode, Json<ApiResponse<serde_json::Value>>) {
     match payload {
-        GroupRequest::Create { name, owner_id, members } => {
+        GroupRequest::Create {
+            name,
+            owner_id,
+            members,
+        } => {
             debug!("Create group: name={:?}", name);
-            let req = common::api::CreateGroupRequest { name, owner_id, members };
+            let req = common::api::CreateGroupRequest {
+                name,
+                owner_id,
+                members,
+            };
             match state.create_group(req).await {
                 Ok(g) => {
-                    let resp = CreateGroupResponse { id: g.id, name: g.name };
+                    let resp = CreateGroupResponse {
+                        id: g.id,
+                        name: g.name,
+                    };
                     json_success(StatusCode::CREATED, serde_json::to_value(resp).unwrap())
                 }
                 Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to create group"),
@@ -154,7 +175,10 @@ pub async fn group_handler(
         GroupRequest::Delete { group_id } => {
             debug!("Delete group: {:?}", group_id);
             match state.delete_group(group_id).await {
-                Ok(_) => json_success(StatusCode::OK, serde_json::json!({"status": "Group deleted"})),
+                Ok(_) => json_success(
+                    StatusCode::OK,
+                    serde_json::json!({"status": "Group deleted"}),
+                ),
                 Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to delete group"),
             }
         }
@@ -178,11 +202,23 @@ pub async fn group_handler(
             }
         }
 
-        GroupRequest::AddMember { group_id, new_member } => {
-            debug!("Add group member: group={:?} member={:?}", group_id, new_member);
-            let req = common::api::NewGroupMemberRequest { group_id, new_member };
+        GroupRequest::AddMember {
+            group_id,
+            new_member,
+        } => {
+            debug!(
+                "Add group member: group={:?} member={:?}",
+                group_id, new_member
+            );
+            let req = common::api::NewGroupMemberRequest {
+                group_id,
+                new_member,
+            };
             match state.new_group_member(req).await {
-                Ok(_) => json_success(StatusCode::OK, serde_json::json!({"status": "member added"})),
+                Ok(_) => json_success(
+                    StatusCode::OK,
+                    serde_json::json!({"status": "member added"}),
+                ),
                 Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to add member"),
             }
         }
@@ -196,15 +232,30 @@ pub async fn expense_handler(
     Json(payload): Json<ExpenseRequest>,
 ) -> (StatusCode, Json<ApiResponse<serde_json::Value>>) {
     match payload {
-        ExpenseRequest::Create { payer, participants, amount, description, group_id } => {
+        ExpenseRequest::Create {
+            payer,
+            participants,
+            amount,
+            description,
+            group_id,
+        } => {
             debug!("Create expense: payer={:?} amount={:?}", payer, amount);
-            let req = common::api::CreateExpenseRequest { payer, participants, amount, description, group_id };
+            let req = common::api::CreateExpenseRequest {
+                payer,
+                participants,
+                amount,
+                description,
+                group_id,
+            };
             match state.create_expense(req).await {
                 Ok(e) => {
                     let resp: CreateExpenseResponse = e.into();
                     json_success(StatusCode::CREATED, serde_json::to_value(resp).unwrap())
                 }
-                Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to create expense"),
+                Err(_) => json_error(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed to create expense",
+                ),
             }
         }
 
@@ -224,8 +275,14 @@ pub async fn expense_handler(
             debug!("Delete expense: {:?}", id);
             let req = common::api::DeleteExpenseRequest { id };
             match state.delete_expense(req).await {
-                Ok(_) => json_success(StatusCode::OK, serde_json::json!({"status": "Expense deleted"})),
-                Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to delete expense"),
+                Ok(_) => json_success(
+                    StatusCode::OK,
+                    serde_json::json!({"status": "Expense deleted"}),
+                ),
+                Err(_) => json_error(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed to delete expense",
+                ),
             }
         }
 
@@ -233,10 +290,14 @@ pub async fn expense_handler(
             debug!("List expenses for user: {:?}", user_id);
             match state.list_expenses_for_user(user_id).await {
                 Ok(expenses) => {
-                    let resp: Vec<GetExpenseResponse> = expenses.into_iter().map(|e| e.into()).collect();
+                    let resp: Vec<GetExpenseResponse> =
+                        expenses.into_iter().map(|e| e.into()).collect();
                     json_success(StatusCode::OK, serde_json::to_value(resp).unwrap())
                 }
-                Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to list expenses for user"),
+                Err(_) => json_error(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed to list expenses for user",
+                ),
             }
         }
 
@@ -244,10 +305,14 @@ pub async fn expense_handler(
             debug!("List expenses for group: {:?}", group_id);
             match state.list_expenses_for_group(group_id).await {
                 Ok(expenses) => {
-                    let resp: Vec<GetExpenseResponse> = expenses.into_iter().map(|e| e.into()).collect();
+                    let resp: Vec<GetExpenseResponse> =
+                        expenses.into_iter().map(|e| e.into()).collect();
                     json_success(StatusCode::OK, serde_json::to_value(resp).unwrap())
                 }
-                Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to list expenses for group"),
+                Err(_) => json_error(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed to list expenses for group",
+                ),
             }
         }
     }
@@ -263,15 +328,25 @@ pub async fn balance_handler(
         BalanceRequest::User { user_id } => {
             debug!("Get user balances: {:?}", user_id);
             match state.get_user_non_group_balances(user_id).await {
-                Ok(balances) => json_success(StatusCode::OK, serde_json::to_value(balances).unwrap()),
-                Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to get user balances"),
+                Ok(balances) => {
+                    json_success(StatusCode::OK, serde_json::to_value(balances).unwrap())
+                }
+                Err(_) => json_error(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed to get user balances",
+                ),
             }
         }
         BalanceRequest::Group { group_id } => {
             debug!("Get group balances: {:?}", group_id);
             match state.get_group_balance_overview(group_id).await {
-                Ok(transfers) => json_success(StatusCode::OK, serde_json::to_value(transfers).unwrap()),
-                Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to get group balances"),
+                Ok(transfers) => {
+                    json_success(StatusCode::OK, serde_json::to_value(transfers).unwrap())
+                }
+                Err(_) => json_error(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed to get group balances",
+                ),
             }
         }
     }

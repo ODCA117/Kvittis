@@ -1,12 +1,13 @@
-use reqwest::{Client as HttpClient, Url};
 use anyhow::Result;
 use common::{
-    ExpenseId, GroupId, UserId, api::{
+    api::{
         ApiResponse, BalanceEntry, BalanceRequest, CreateExpenseResponse, CreateGroupResponse,
-        ExpenseRequest, GetExpenseResponse, GetGroupResponse, GetUserResponse,
-        GroupBalance, GroupRequest, RegisterResponse, UserRequest,
-    }
+        ExpenseRequest, GetExpenseResponse, GetGroupResponse, GetUserResponse, GroupBalance,
+        GroupRequest, RegisterResponse, UserRequest,
+    },
+    ExpenseId, GroupId, UserId,
 };
+use reqwest::{Client as HttpClient, Url};
 
 const USER_ENDPOINT: &str = "/api/user";
 const GROUP_ENDPOINT: &str = "/api/group";
@@ -28,7 +29,9 @@ impl KvittisClient {
     }
 
     pub async fn register_user(&self, name: &str) -> Result<RegisterResponse> {
-        let req = UserRequest::Register { username: name.to_owned() };
+        let req = UserRequest::Register {
+            username: name.to_owned(),
+        };
         let resp = self
             .http
             .post(self.url.join(USER_ENDPOINT)?)
@@ -91,7 +94,9 @@ impl KvittisClient {
     }
 
     pub async fn search_users(&self, query: &str) -> Result<Vec<GetUserResponse>> {
-        let req = UserRequest::Search { query: query.to_owned() };
+        let req = UserRequest::Search {
+            query: query.to_owned(),
+        };
         let resp = self
             .http
             .post(self.url.join(USER_ENDPOINT)?)
@@ -129,7 +134,13 @@ impl KvittisClient {
         description: Option<String>,
         group_id: Option<GroupId>,
     ) -> Result<CreateExpenseResponse> {
-        let req = ExpenseRequest::Create { payer, participants, amount, description, group_id };
+        let req = ExpenseRequest::Create {
+            payer,
+            participants,
+            amount,
+            description,
+            group_id,
+        };
         let resp = self
             .http
             .post(self.url.join(EXPENSE_ENDPOINT)?)
@@ -216,7 +227,9 @@ impl KvittisClient {
     }
 
     pub async fn search_group(&self, query: &str) -> Result<Vec<GetGroupResponse>> {
-        let req = GroupRequest::Search { query: query.to_owned() };
+        let req = GroupRequest::Search {
+            query: query.to_owned(),
+        };
         let resp = self
             .http
             .post(self.url.join(GROUP_ENDPOINT)?)
@@ -248,7 +261,10 @@ impl KvittisClient {
     }
 
     pub async fn add_user_to_group(&self, group_id: GroupId, user_id: UserId) -> Result<()> {
-        let req = GroupRequest::AddMember { group_id, new_member: user_id };
+        let req = GroupRequest::AddMember {
+            group_id,
+            new_member: user_id,
+        };
         let resp = self
             .http
             .post(self.url.join(GROUP_ENDPOINT)?)
@@ -278,7 +294,10 @@ impl KvittisClient {
         }
     }
 
-    pub async fn list_expenses_for_group(&self, group_id: GroupId) -> Result<Vec<GetExpenseResponse>> {
+    pub async fn list_expenses_for_group(
+        &self,
+        group_id: GroupId,
+    ) -> Result<Vec<GetExpenseResponse>> {
         let req = ExpenseRequest::ListForGroup { group_id };
         let resp = self
             .http
