@@ -1,14 +1,56 @@
 use std::{collections::HashMap, path::Path};
 
 use anyhow::{Result, anyhow};
-use common::{ExpenseId, Group, GroupId, UserId};
-use sqlx::{Row, SqlitePool, sqlite::SqlitePoolOptions};
+use chrono::DateTime;
+use common::{ExpenseId, GroupId, UserId};
+use sqlx::{
+    FromRow, Row, SqlitePool,
+    sqlite::{SqlitePoolOptions, SqliteRow},
+};
 use tracing::{debug, info, warn};
 
 use crate::db::{ExpenseRow, GroupRow, Store, UserRow};
 
 pub struct SqliteStore {
     pool: SqlitePool,
+}
+
+// FIXME: User query_as instead?
+impl FromRow<'_, SqliteRow> for UserRow {
+    fn from_row(row: &SqliteRow) -> Result<Self, sqlx::Error> {
+        let id: UserId = row.get("id");
+        let username: String = row.get("username");
+        let email: String = row.get("email");
+        let password_hash: String = row.get("password_hash");
+        let created_at: DateTime<chrono::FixedOffset> = DateTime::parse_from_rfc3339(
+            row.get::<String, _>("created_at").as_str(),
+        )
+        .map_err(|e| sqlx::Error::ColumnDecode {
+            index: "created_at".into(),
+            source: Box::new(e),
+        })?;
+        let updated_at: DateTime<chrono::FixedOffset> = DateTime::parse_from_rfc3339(
+            row.get::<String, _>("updated_at").as_str(),
+        )
+        .map_err(|e| sqlx::Error::ColumnDecode {
+            index: "updated_at".into(),
+            source: Box::new(e),
+        })?;
+        let deleted_at: Option<DateTime<chrono::FixedOffset>> = row
+            .try_get::<String, _>("deleted_at")
+            .ok()
+            .and_then(|s| DateTime::parse_from_rfc3339(s.as_str()).ok());
+
+        Ok(UserRow {
+            id,
+            username,
+            email,
+            password_hash,
+            created_at,
+            updated_at,
+            deleted_at,
+        })
+    }
 }
 
 impl SqliteStore {
@@ -29,12 +71,17 @@ impl Store for SqliteStore {
     async fn create_user(&self, user: UserRow) -> Result<UserRow> {
         let res = sqlx::query(
             r#"
-            INSERT INTO users (id, username)
-            VALUES ($1, $2)
+            INSERT INTO users (id, username, email, password_hash, created_at, updated_at, deleted_at)
+            VALUES ($1, $2, $3, $4, $5, $6, $7)
             "#,
         )
         .bind(user.id)
         .bind(&user.username)
+        .bind(&user.email)
+        .bind(&user.password_hash)
+        .bind(user.created_at.to_rfc3339())
+        .bind(user.updated_at.to_rfc3339())
+        .bind(user.deleted_at.map(|dt| dt.to_rfc3339()))
         .execute(&self.pool)
         .await;
 
@@ -51,9 +98,9 @@ impl Store for SqliteStore {
     }
 
     async fn get_user(&self, id: UserId) -> Result<Option<UserRow>> {
-        let row = sqlx::query(
+        let user: Option<UserRow> = sqlx::query_as(
             r#"
-            SELECT id, username
+            SELECT id, username, email, password_hash, created_at, updated_at, deleted_at
             FROM users
             WHERE id = $1
             "#,
@@ -62,47 +109,29 @@ impl Store for SqliteStore {
         .fetch_optional(&self.pool)
         .await?;
 
-        let Some(row) = row else {
-            warn!("NO user found");
-            return Ok(None);
-        };
-        info!("User found");
-
-        let friends: Vec<UserId> = sqlx::query_scalar(
-            r#"
-            SELECT
-                CASE
-                    WHEN user1_id = $1 THEN user2_id
-                    ELSE user1_id
-                END AS friend_id
-            FROM
-                friendships
-            WHERE
-                user1_id = $1 OR user2_id = $1
-            "#,
-        )
-        .bind(id)
-        .fetch_all(&self.pool)
-        .await?;
-        let user = UserRow {
-            id: row.try_get("id")?,
-            username: row.try_get("username")?,
-            friends,
-        };
-
         info!(" USER: {:?}", &user);
-        Ok(Some(user))
+        Ok(user)
     }
 
+    /* Should not delete. Do soft delete instead */
     async fn delete_user(&self, id: UserId) -> Result<()> {
+        let mut user = self
+            .get_user(id)
+            .await?
+            .ok_or_else(|| anyhow!("User not found"))?;
+        user.deleted_at =
+            Some(chrono::Utc::now().with_timezone(&chrono::FixedOffset::east_opt(0).unwrap()));
+
         print_sql_result(
             sqlx::query(
                 r#"
-            DELETE FROM users
-            WHERE id = $1
+            UPDATE FROM users
+            SET deleted_at = $1
+            WHERE id = $2
             "#,
             )
-            .bind(id)
+            .bind(user.deleted_at.unwrap().to_rfc3339())
+            .bind(user.id)
             .execute(&self.pool)
             .await,
         )?;
@@ -111,6 +140,7 @@ impl Store for SqliteStore {
         Ok(())
     }
 
+    // FIXME: Fix in future. Friendship should not be instant.
     async fn add_friend(&self, user1: UserId, user2: UserId) -> Result<()> {
         let (id1, id2) = if user1 < user2 {
             (user1, user2)
@@ -157,67 +187,52 @@ impl Store for SqliteStore {
     }
 
     async fn list_users(&self) -> Result<Vec<UserRow>> {
-        /* Returns a vec with users that contans user_id, user_name, friend_id, and friend_username */
-        let friendships = print_sql_result(
-            sqlx::query(
+        /* Returns a vec with users */
+        let users: Vec<UserRow> = print_sql_result(
+            sqlx::query_as(
                 r#"
             SELECT
-                u.id          AS user_id,
-                u.username    AS user_username,
-                f.id          AS friend_id,
-                f.username    AS friend_username
-            FROM users u
-            LEFT JOIN friendships fs
-                ON u.id = fs.user1_id OR u.id = fs.user2_id
-            LEFT JOIN users f
-                ON f.id = CASE
-                    WHEN fs.user1_id = u.id THEN fs.user2_id
-                    ELSE fs.user1_id
-                END
-            ORDER BY u.id;
+                id
+                username
+                email
+                password_hash
+                created_at
+                updated_at
+                deleted_at
+            FROM users
             "#,
             )
             .fetch_all(&self.pool)
             .await,
         )?;
 
-        /* Merge all the friends to one user */
-        let mut map = HashMap::new();
-        for r in friendships.iter() {
-            let user_id: UserId = r.get("user_id");
-            let username: String = r.get("user_username");
-            let friend_id: Option<UserId> = r.try_get("friend_id").ok();
-            let user = map.entry(user_id).or_insert(UserRow {
-                id: user_id,
-                username,
-                friends: vec![],
-            });
-            if let Some(friend_id) = friend_id {
-                user.friends.push(friend_id);
-            }
-
-            // let friend_username: Option<String> = r.try_get("friend_username").ok();
-            // println!("user: {}, {}, friend: {:?}, {:?}", user_id, username, friend_id, friend_username);
-        }
-
-        let users: Vec<UserRow> = map.values().cloned().collect();
-        // dbg!(&users);
         Ok(users)
     }
 
-    async fn update_user(&self, user: UserRow) -> Result<UserRow> {
+    // Should be able to update username, email, password_hash, updated_at is automatic.
+    // created_at does not update ever, deleted_at should not update unless deleted.
+    async fn update_user(&self, mut user: UserRow) -> Result<UserRow> {
+        // TODO: Check the timezone stuff...
+        user.updated_at =
+            chrono::Utc::now().with_timezone(&chrono::FixedOffset::east_opt(0).unwrap());
         print_sql_result(
             sqlx::query(
                 r#"
                     UPDATE users
                     SET username = $1
-                    WHERE id = $2
+                    SET email = $2
+                    SET password_hash = $3
+                    SET updated_at = $4
+                    WHERE id = $5
                 "#,
             )
             .bind(&user.username)
+            .bind(&user.email)
+            .bind(&user.password_hash)
+            .bind(user.updated_at.to_rfc3339())
             .bind(user.id)
             .execute(&self.pool)
-            .await
+            .await,
         )?;
 
         Ok(user)
@@ -236,7 +251,7 @@ impl Store for SqliteStore {
             .bind(&group.name)
             .bind(group.owner_id)
             .execute(&self.pool)
-            .await
+            .await,
         )?;
 
         print_sql_result(
@@ -245,12 +260,11 @@ impl Store for SqliteStore {
                     INSERT INTO group_members (group_id, user_id)
                     VALUES ($1, $2)
                 "#,
-
             )
             .bind(group.id)
             .bind(group.owner_id)
             .execute(&self.pool)
-            .await
+            .await,
         )?;
 
         Ok(group)
@@ -288,7 +302,12 @@ impl Store for SqliteStore {
             let owner_id: UserId = r.get("group_owner");
             let user_id: UserId = r.get("user_id");
             let _username: String = r.get("username");
-            let g = map.entry(id).or_insert( GroupRow { id, name, owner_id, members: vec![] });
+            let g = map.entry(id).or_insert(GroupRow {
+                id,
+                name,
+                owner_id,
+                members: vec![],
+            });
             g.members.push(user_id);
         }
 
@@ -324,7 +343,12 @@ impl Store for SqliteStore {
             let owner_id: UserId = r.get("group_owner");
             let user_id: UserId = r.get("user_id");
             let _username: String = r.get("username");
-            let g = map.entry(id).or_insert( GroupRow { id, name, owner_id, members: vec![] });
+            let g = map.entry(id).or_insert(GroupRow {
+                id,
+                name,
+                owner_id,
+                members: vec![],
+            });
             g.members.push(user_id);
         }
 
@@ -338,11 +362,10 @@ impl Store for SqliteStore {
                 r#"
                     DELETE FROM group_members WHERE group_id = $1
                 "#,
-
             )
             .bind(id)
             .execute(&self.pool)
-            .await
+            .await,
         )?;
 
         // Remove the group
@@ -360,7 +383,6 @@ impl Store for SqliteStore {
 
         info!("group deleted: {:?}", id);
         Ok(())
-        
     }
 
     async fn update_group(&self, group: GroupRow) -> Result<GroupRow> {
@@ -376,7 +398,7 @@ impl Store for SqliteStore {
             .bind(group.owner_id)
             .bind(group.id)
             .execute(&self.pool)
-            .await
+            .await,
         )?;
 
         // Update members: remove all and add again (simpler than calculating the diff)
@@ -385,11 +407,10 @@ impl Store for SqliteStore {
                 r#"
                     DELETE FROM group_members WHERE group_id = $1
                 "#,
-
             )
             .bind(group.id)
             .execute(&self.pool)
-            .await
+            .await,
         )?;
 
         for member in &group.members {
@@ -399,12 +420,11 @@ impl Store for SqliteStore {
                         INSERT INTO group_members (group_id, user_id)
                         VALUES ($1, $2)
                     "#,
-
                 )
                 .bind(group.id)
                 .bind(member)
                 .execute(&self.pool)
-                .await
+                .await,
             )?;
         }
 
@@ -428,7 +448,7 @@ impl Store for SqliteStore {
             .bind(expense.group_id)
             .bind(expense.timestamp_ms)
             .execute(&self.pool)
-            .await
+            .await,
         )?;
 
         // Insert the participants in the expense_participants table.
@@ -443,16 +463,16 @@ impl Store for SqliteStore {
                 .bind(expense.id)
                 .bind(participant)
                 .execute(&self.pool)
-                .await
+                .await,
             )?;
         }
 
         Ok(expense)
     }
-    
+
     async fn delete_expense(&self, id: ExpenseId) -> Result<()> {
         // Remove the participants first due to foreign key constraint
-    
+
         print_sql_result(
             sqlx::query(
                 r#"
@@ -461,7 +481,7 @@ impl Store for SqliteStore {
             )
             .bind(id)
             .execute(&self.pool)
-            .await
+            .await,
         )?;
 
         // Remove the expense
@@ -474,7 +494,7 @@ impl Store for SqliteStore {
             )
             .bind(id)
             .execute(&self.pool)
-            .await
+            .await,
         )?;
 
         Ok(())
@@ -518,9 +538,16 @@ impl Store for SqliteStore {
             let timestamp_ms: i64 = r.get("timestamp_ms");
             let user_id: UserId = r.get("user_id");
             let _username: String = r.get("username");
-            let e = map.entry(id).or_insert( ExpenseRow { id, payer, participants: vec![], amount, description, group_id, timestamp_ms });
+            let e = map.entry(id).or_insert(ExpenseRow {
+                id,
+                payer,
+                participants: vec![],
+                amount,
+                description,
+                group_id,
+                timestamp_ms,
+            });
             e.participants.push(user_id);
-
         }
 
         Ok(map.into_values().next())
@@ -621,4 +648,29 @@ fn print_sql_result<T>(res: Result<T, sqlx::Error>) -> Result<T> {
             Err(anyhow!("Failed to SQL query"))
         }
     }
+}
+
+fn build_user_from_row(row: SqliteRow) -> Result<UserRow> {
+    let id: UserId = row.get("id");
+    let username: String = row.get("username");
+    let email: String = row.get("email");
+    let password_hash: String = row.get("password_hash");
+    let created_at: DateTime<chrono::FixedOffset> =
+        DateTime::parse_from_rfc3339(row.get::<String, _>("created_at").as_str())?;
+    let updated_at: DateTime<chrono::FixedOffset> =
+        DateTime::parse_from_rfc3339(row.get::<String, _>("updated_at").as_str())?;
+    let deleted_at: Option<DateTime<chrono::FixedOffset>> = row
+        .try_get::<String, _>("deleted_at")
+        .ok()
+        .and_then(|s| DateTime::parse_from_rfc3339(s.as_str()).ok());
+
+    Ok(UserRow {
+        id,
+        username,
+        email,
+        password_hash,
+        created_at,
+        updated_at,
+        deleted_at,
+    })
 }

@@ -3,6 +3,7 @@ pub mod db_file;
 pub mod db_sqlite;
 use anyhow::Result;
 use async_trait::async_trait;
+use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize, Serialize};
 
 use common::{ExpenseId, GroupId, UserId};
@@ -36,15 +37,34 @@ pub trait Store: Send + Sync {
 pub struct UserRow {
     pub id: UserId,
     pub username: String,
-    pub friends: Vec<UserId>,
+    // pub friends: Vec<UserId>, Does not exist in the DB.
+    pub email: String,
+    pub password_hash: String,
+    pub created_at: DateTime<FixedOffset>,
+    pub updated_at: DateTime<FixedOffset>,
+    pub deleted_at: Option<DateTime<FixedOffset>>,
 }
 
 impl UserRow {
-    pub fn new(id: UserId, username: String, friends: Vec<UserId>) -> Self {
+    pub fn new(
+        id: UserId,
+        username: String,
+        // friends: Vec<UserId>,
+        email: String,
+        password_hash: String,
+        created_at: DateTime<FixedOffset>,
+        updated_at: DateTime<FixedOffset>,
+        deleted_at: Option<DateTime<FixedOffset>>,
+    ) -> Self {
         Self {
             id,
             username,
-            friends,
+            // friends,
+            email,
+            password_hash,
+            created_at,
+            updated_at,
+            deleted_at,
         }
     }
 }

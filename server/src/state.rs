@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::{Result, anyhow};
+use chrono::DateTime;
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 use uuid::Uuid;
@@ -56,7 +57,7 @@ impl AppState {
         Ok(User {
             id: stored.id,
             username: stored.username,
-            friends: stored.friends,
+            friends: vec![], // Friends fetched separately,
         })
     }
 
@@ -82,15 +83,17 @@ impl AppState {
     pub async fn search_users(&self, query: &str) -> Result<Vec<User>> {
         let guard = self.data.read().await;
         // NOTE: This is could be optimized later.
-        let users = guard
-            .store
-            .list_users()
-            .await?;
-        let users: Vec<User> = users.into_iter()
+        let users = guard.store.list_users().await?;
+        let users: Vec<User> = users
+            .into_iter()
             .filter(|u| u.username.contains(query))
             .map(|u| u.into())
             .collect();
-        debug!("Search users with query '{}': found {} users", query, users.len());
+        debug!(
+            "Search users with query '{}': found {} users",
+            query,
+            users.len()
+        );
         Ok(users)
     }
 
@@ -107,7 +110,7 @@ impl AppState {
         Ok(User {
             id: stored.id,
             username: stored.username,
-            friends: stored.friends,
+            friends: vec![], // Friends fetched separately,
         })
     }
 
@@ -143,7 +146,11 @@ impl AppState {
 
     pub async fn get_expense(&self, expense_req: GetExpenseRequest) -> Result<Expense> {
         let guard = self.data.write().await;
-        let stored = guard.store.get_expense(expense_req.id).await?.ok_or_else(|| anyhow!("Expense not found"))?;
+        let stored = guard
+            .store
+            .get_expense(expense_req.id)
+            .await?
+            .ok_or_else(|| anyhow!("Expense not found"))?;
         Ok(stored.into())
     }
 
@@ -170,13 +177,18 @@ impl AppState {
     /// Negative amount → `user_id` owes counterparty.
     pub async fn get_user_non_group_balances(&self, user_id: UserId) -> Result<Vec<BalanceEntry>> {
         let expenses = self.list_expenses_for_user(user_id).await?;
-        let non_group: Vec<Expense> = expenses.into_iter().filter(|e| e.group_id.is_none()).collect();
+        let non_group: Vec<Expense> = expenses
+            .into_iter()
+            .filter(|e| e.group_id.is_none())
+            .collect();
 
         let mut net: HashMap<UserId, i64> = HashMap::new();
 
         for expense in &non_group {
             let n = expense.participants.len() as i64;
-            if n == 0 { continue; }
+            if n == 0 {
+                continue;
+            }
 
             // Deterministic integer split: sort participants by UserId ascending;
             // first `rem` get base+1, rest get base.
@@ -223,7 +235,9 @@ impl AppState {
 
         for expense in &expenses {
             let n = expense.participants.len() as i64;
-            if n == 0 { continue; }
+            if n == 0 {
+                continue;
+            }
 
             let mut sorted_participants = expense.participants.clone();
             sorted_participants.sort();
@@ -266,11 +280,19 @@ impl AppState {
         let mut ci = 0;
         while di < debtors.len() && ci < creditors.len() {
             let paid = debtors[di].1.min(creditors[ci].1);
-            transfers.push(GroupBalance { from: debtors[di].0, to: creditors[ci].0, amount: paid });
+            transfers.push(GroupBalance {
+                from: debtors[di].0,
+                to: creditors[ci].0,
+                amount: paid,
+            });
             debtors[di].1 -= paid;
             creditors[ci].1 -= paid;
-            if debtors[di].1 == 0 { di += 1; }
-            if creditors[ci].1 == 0 { ci += 1; }
+            if debtors[di].1 == 0 {
+                di += 1;
+            }
+            if creditors[ci].1 == 0 {
+                ci += 1;
+            }
         }
 
         Ok(transfers)
@@ -297,24 +319,37 @@ impl AppState {
     pub async fn get_group(&self, group_id: GroupId) -> Result<Option<Group>> {
         let guard = self.data.write().await;
         debug!("GET GROUP!!!!");
-        guard.store.get_group(group_id).await.map(|g| g.map(|g| g.into()))
+        guard
+            .store
+            .get_group(group_id)
+            .await
+            .map(|g| g.map(|g| g.into()))
     }
 
     pub async fn search_groups(&self, query: &str) -> Result<Vec<Group>> {
         let guard = self.data.write().await;
         debug!("Search gropu");
         let groups = guard.store.get_groups().await?;
-        let groups: Vec<Group> = groups.into_iter()
+        let groups: Vec<Group> = groups
+            .into_iter()
             .filter(|g| g.name.contains(query))
             .map(|g| g.into())
             .collect();
-        debug!("Search groups with query '{}': found {} groups", query, groups.len());
+        debug!(
+            "Search groups with query '{}': found {} groups",
+            query,
+            groups.len()
+        );
         Ok(groups)
     }
 
     pub async fn new_group_member(&self, req: NewGroupMemberRequest) -> Result<Group> {
         let guard = self.data.write().await;
-        let mut group = guard.store.get_group(req.group_id).await?.ok_or_else(|| anyhow!("Group not found"))?;
+        let mut group = guard
+            .store
+            .get_group(req.group_id)
+            .await?
+            .ok_or_else(|| anyhow!("Group not found"))?;
         group.members.push(req.new_member);
         let stored = guard.store.update_group(group.clone().into()).await?;
         Ok(stored.into())
@@ -323,7 +358,15 @@ impl AppState {
 
 impl From<User> for UserRow {
     fn from(value: User) -> Self {
-        UserRow::new(value.id, value.username, value.friends)
+        UserRow::new(
+            value.id,
+            value.username,
+            String::new(),                      // email Add this to user
+            String::new(),                      // password_hash not stored in User
+            DateTime::from(chrono::Utc::now()), // created_at Add this to User
+            DateTime::from(chrono::Utc::now()), // updated_at Add this to User
+            None,
+        )
     }
 }
 
@@ -332,7 +375,7 @@ impl From<UserRow> for User {
         User {
             id: user.id,
             username: user.username,
-            friends: user.friends,
+            friends: vec![], // Friends are separate from UserRow
         }
     }
 }

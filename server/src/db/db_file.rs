@@ -4,7 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use tokio::sync::RwLock;
-use tracing::debug;
+use tracing::{debug, warn};
 
 use common::{ExpenseId, GroupId, UserId};
 
@@ -98,15 +98,16 @@ impl Store for FileStore {
         Ok(self.state.read().await.users.values().cloned().collect())
     }
     async fn add_friend(&self, user1: UserId, user2: UserId) -> Result<()> {
-        let mut state = self.state.write().await;
+        warn!("Add friend not implemented");
+        let state = self.state.write().await;
         if !state.users.contains_key(&user1) && !state.users.contains_key(&user2) {
             return Err(anyhow!("users not found"));
         }
 
-        let u1 = state.users.get_mut(&user1).unwrap();
-        u1.friends.push(user2);
-        let u2 = state.users.get_mut(&user2).unwrap();
-        u2.friends.push(user1);
+        // let u1 = state.users.get_mut(&user1).unwrap();
+        // u1.friends.push(user2);
+        // let u2 = state.users.get_mut(&user2).unwrap();
+        // u2.friends.push(user1);
 
         drop(state);
         self.persist().await?;

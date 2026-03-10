@@ -1,8 +1,12 @@
 -- Users Table
 CREATE TABLE users (
     id TEXT PRIMARY KEY NOT NULL, -- UUIDs are stored as TEXT in SQLite
-    username TEXT NOT NULL UNIQUE
-    -- password_hash TEXT -- Add this later when you're ready!
+    username TEXT NOT NULL UNIQUE,
+    email VARCHAR(255) NOT NULL UNIQUE,
+    password_hash VARCHAR(255) NOT NULL,
+    created_at TEXT NOT NULL, -- ISO 8601 format string for timestamp
+    updated_at TEXT NOT NULL, -- ISO 8601 format string for timestamp
+    deleted_at TEXT -- ISO 8601 format string for timestamp, nullable
 );
 
 -- Many-to-Many: Friends
