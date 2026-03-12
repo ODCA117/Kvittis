@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use anyhow::{Result, anyhow};
-use chrono::DateTime;
+use chrono::{DateTime, FixedOffset, Utc};
 use tokio::sync::RwLock;
 use tracing::{debug, info, warn};
 use uuid::Uuid;
@@ -10,7 +10,7 @@ use crate::db::{ExpenseRow, GroupRow, Store, UserRow};
 use std::collections::HashMap;
 
 use common::{
-    Expense, Group, GroupId, User, UserId,
+    Expense, Group, GroupId, NewUser, User, UserId,
     api::{
         BalanceEntry, CreateExpenseRequest, CreateGroupRequest, DeleteExpenseRequest,
         GetExpenseRequest, GroupBalance, NewGroupMemberRequest,
@@ -41,24 +41,14 @@ impl AppState {
         }
     }
 
-    // pub fn commit_all(&mut self) -> Result<()> {
-    //     let guard = self.data.write();
-    //     guard.user_db.commit()?;
-    //     guard.group_db.commit()?;
-    //     guard.expense_db.commit()?;
-    //     Ok(())
-    // }
-
-    pub async fn register_user(&self, user: User) -> Result<User> {
+    pub async fn register_user(&self, user: NewUser) -> Result<User> {
         let guard = self.data.write().await;
-        let stored = guard.store.create_user(user.into()).await?;
+        let user = create_user_row_from_new_user(user);
+
+        let stored = guard.store.create_user(user).await?;
 
         debug!("User added: {:?}", stored);
-        Ok(User {
-            id: stored.id,
-            username: stored.username,
-            friends: vec![], // Friends fetched separately,
-        })
+        Ok(stored.into())
     }
 
     pub async fn get_user(&self, id: UserId) -> Result<User> {
@@ -107,11 +97,7 @@ impl AppState {
     pub async fn edit_user(&self, updated_user: User) -> Result<User> {
         let guard = self.data.write().await;
         let stored = guard.store.update_user(updated_user.into()).await?;
-        Ok(User {
-            id: stored.id,
-            username: stored.username,
-            friends: vec![], // Friends fetched separately,
-        })
+        Ok(stored.into())
     }
 
     // FIXME: Require confirmation on both parties.
@@ -356,6 +342,20 @@ impl AppState {
     }
 }
 
+fn create_user_row_from_new_user(new_user: NewUser) -> UserRow {
+    let now = Utc::now();
+    let date_time = now.with_timezone(&FixedOffset::east_opt(0).unwrap());
+    UserRow {
+        id: Uuid::new_v4(),
+        username: new_user.username,
+        email: new_user.email,
+        password_hash: new_user.password,
+        created_at: date_time,
+        updated_at: date_time,
+        deleted_at: None,
+    }
+}
+
 impl From<User> for UserRow {
     fn from(value: User) -> Self {
         UserRow::new(
@@ -376,6 +376,9 @@ impl From<UserRow> for User {
             id: user.id,
             username: user.username,
             friends: vec![], // Friends are separate from UserRow
+            email: user.email,
+            created_at: user.created_at,
+            updated_at: user.updated_at,
         }
     }
 }

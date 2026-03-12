@@ -1,11 +1,18 @@
-use anyhow::anyhow;
-use common::{
-    api::{GetGroupResponse, GetUserResponse},
-    GroupId, User, UserId,
-};
+use common::NewUser;
 use rust_kvittis_client::kvittis_client::KvittisClient;
 
 const BASE_URL: &str = "http://localhost:3000";
+const PASSWORD: &str = "secret_password";
+
+fn create_new_user(username: String) -> NewUser {
+    let email = username.clone() + "@gmail.com";
+    NewUser {
+        username,
+        email,
+        password: PASSWORD.to_owned(),
+    }
+}
+
 // ────────────────────────────────────────────────────────────────────────────
 // TC1 — ListForUser returns payer + participant expenses
 // ────────────────────────────────────────────────────────────────────────────
@@ -14,9 +21,12 @@ async fn tc1_list_for_user_includes_payer_and_participant() -> anyhow::Result<()
     let client = KvittisClient::new(BASE_URL)?;
 
     // Unique names to avoid clashes with parallel tests
-    let a = client.register_user("tc1_user_a").await?;
-    let b = client.register_user("tc1_user_b").await?;
-    let c = client.register_user("tc1_user_c").await?;
+    let tc1_user_1 = create_new_user("tc1_user_1".to_owned());
+    let tc1_user_2 = create_new_user("tc1_user_2".to_owned());
+    let tc1_user_3 = create_new_user("tc1_user_3".to_owned());
+    let a = client.register_user(tc1_user_1).await?.user;
+    let b = client.register_user(tc1_user_2).await?.user;
+    let c = client.register_user(tc1_user_3).await?.user;
 
     // E1: payer A, participants [A, B], no group
     let e1 = client
@@ -48,9 +58,11 @@ async fn tc1_list_for_user_includes_payer_and_participant() -> anyhow::Result<()
 #[tokio::test]
 async fn tc2_user_balances_basic_split() -> anyhow::Result<()> {
     let client = KvittisClient::new(BASE_URL)?;
+    let tc2_user_1 = create_new_user("tc2_user_1".to_owned());
+    let tc2_user_2 = create_new_user("tc2_user_2".to_owned());
 
-    let a = client.register_user("tc2_user_a").await?;
-    let b = client.register_user("tc2_user_b").await?;
+    let a = client.register_user(tc2_user_1).await?.user;
+    let b = client.register_user(tc2_user_2).await?.user;
 
     // E1: payer A, participants [A, B], amount 100 → B owes A 50
     let e1 = client
@@ -86,9 +98,11 @@ async fn tc2_user_balances_basic_split() -> anyhow::Result<()> {
 #[tokio::test]
 async fn tc3_user_balances_ignore_group_expenses() -> anyhow::Result<()> {
     let client = KvittisClient::new(BASE_URL)?;
+    let tc3_user_1 = create_new_user("tc3_user_1".to_owned());
+    let tc3_user_2 = create_new_user("tc3_user_2".to_owned());
 
-    let a = client.register_user("tc3_user_a").await?;
-    let b = client.register_user("tc3_user_b").await?;
+    let a = client.register_user(tc3_user_1).await?.user;
+    let b = client.register_user(tc3_user_2).await?.user;
     let g = client
         .create_group("tc3_group_g", a.id, vec![a.id, b.id])
         .await?;
@@ -129,9 +143,13 @@ async fn tc3_user_balances_ignore_group_expenses() -> anyhow::Result<()> {
 async fn tc4_group_overview_includes_all_expenses() -> anyhow::Result<()> {
     let client = KvittisClient::new(BASE_URL)?;
 
-    let a = client.register_user("tc4_user_a").await?;
-    let b = client.register_user("tc4_user_b").await?;
-    let c = client.register_user("tc4_user_c").await?;
+    let tc4_user_1 = create_new_user("tc4_user_1".to_owned());
+    let tc4_user_2 = create_new_user("tc4_user_2".to_owned());
+    let tc4_user_3 = create_new_user("tc4_user_3".to_owned());
+
+    let a = client.register_user(tc4_user_1).await?.user;
+    let b = client.register_user(tc4_user_2).await?.user;
+    let c = client.register_user(tc4_user_3).await?.user;
     let g = client
         .create_group("tc4_group_g", a.id, vec![a.id, b.id, c.id])
         .await?;
@@ -174,10 +192,13 @@ async fn tc4_group_overview_includes_all_expenses() -> anyhow::Result<()> {
 #[tokio::test]
 async fn tc5_deterministic_remainder_split() -> anyhow::Result<()> {
     let client = KvittisClient::new(BASE_URL)?;
+    let tc5_user_1 = create_new_user("tc5_user_1".to_owned());
+    let tc5_user_2 = create_new_user("tc5_user_2".to_owned());
+    let tc5_user_3 = create_new_user("tc5_user_3".to_owned());
 
-    let a = client.register_user("tc5_user_a").await?;
-    let b = client.register_user("tc5_user_b").await?;
-    let c = client.register_user("tc5_user_c").await?;
+    let a = client.register_user(tc5_user_1).await?.user;
+    let b = client.register_user(tc5_user_2).await?.user;
+    let c = client.register_user(tc5_user_3).await?.user;
 
     // amount=100, 3 participants → base=33, rem=1
     // Sorted by UserId, first participant gets 34, others get 33. Sum = 34+33+33 = 100.

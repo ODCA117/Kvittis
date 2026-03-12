@@ -5,7 +5,7 @@ use common::{
         ExpenseRequest, GetExpenseResponse, GetGroupResponse, GetUserResponse, GroupBalance,
         GroupRequest, RegisterResponse, UserRequest,
     },
-    ExpenseId, GroupId, UserId,
+    ExpenseId, GroupId, NewUser, UserId,
 };
 use reqwest::{Client as HttpClient, Url};
 
@@ -28,10 +28,11 @@ impl KvittisClient {
         })
     }
 
-    pub async fn register_user(&self, name: &str) -> Result<RegisterResponse> {
-        let req = UserRequest::Register {
-            username: name.to_owned(),
-        };
+    pub async fn register_user(&self, user: NewUser) -> Result<RegisterResponse> {
+        let req = UserRequest::Register { user };
+
+        dbg!(req.clone());
+
         let resp = self
             .http
             .post(self.url.join(USER_ENDPOINT)?)

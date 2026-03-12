@@ -1,3 +1,5 @@
+use chrono::{DateTime, FixedOffset};
+use serde::{Deserialize, Serialize};
 // use chrono::{DateTime, FixedOffset};
 use uuid::Uuid;
 pub mod api;
@@ -6,15 +8,21 @@ pub type UserId = Uuid;
 pub type GroupId = Uuid;
 pub type ExpenseId = Uuid;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct User {
     pub id: UserId,
     pub username: String,
     pub friends: Vec<UserId>,
-    // TODO: Add this
-    // pub email: String,
-    // pub created_at: DateTime<FixedOffset>,
-    // pub updated_at: DateTime<FixedOffset>,
+    pub email: String,
+    pub created_at: DateTime<FixedOffset>,
+    pub updated_at: DateTime<FixedOffset>,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct NewUser {
+    pub username: String,
+    pub email: String,
+    pub password: String,
 }
 
 #[derive(Clone, Debug)]

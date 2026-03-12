@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use tokio::sync::RwLock;
 use tracing::{debug, warn};
 
-use common::{ExpenseId, GroupId, UserId};
+use common::{ExpenseId, GroupId, NewUser, UserId};
 
 use crate::db::{ExpenseRow, GroupRow, Store, UserRow};
 

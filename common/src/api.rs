@@ -1,19 +1,16 @@
-use crate::{Expense, ExpenseId, Group, GroupId, User, UserId};
+use crate::{Expense, ExpenseId, Group, GroupId, NewUser, User, UserId};
 use serde::{Deserialize, Serialize};
 
 // ── Response types ────────────────────────────────────────────────────────────
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct RegisterResponse {
-    pub id: UserId,
-    pub username: String,
+    pub user: User,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GetUserResponse {
-    pub id: UserId,
-    pub username: String,
-    pub friends: Vec<UserId>,
+    pub user: User,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -88,10 +85,10 @@ pub struct DeleteExpenseRequest {
 
 // ── Request enums (one per resource, action-based) ───────────────────────────
 
-#[derive(Serialize, Deserialize, Debug)]
+#[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "action", rename_all = "snake_case")]
 pub enum UserRequest {
-    Register { username: String },
+    Register { user: NewUser },
     Get { user_id: UserId },
     Delete { user_id: UserId },
     List,
@@ -180,40 +177,25 @@ pub enum ApiResponse<T: Serialize> {
 
 impl From<User> for GetUserResponse {
     fn from(value: User) -> Self {
-        GetUserResponse {
-            id: value.id,
-            username: value.username,
-            friends: value.friends.clone(),
-        }
+        GetUserResponse { user: value }
     }
 }
 
 impl From<GetUserResponse> for User {
     fn from(value: GetUserResponse) -> Self {
-        Self {
-            id: value.id,
-            username: value.username,
-            friends: value.friends,
-        }
+        value.user
     }
 }
 
 impl From<User> for RegisterResponse {
     fn from(value: User) -> Self {
-        RegisterResponse {
-            id: value.id,
-            username: value.username,
-        }
+        RegisterResponse { user: value }
     }
 }
 
 impl From<RegisterResponse> for User {
     fn from(value: RegisterResponse) -> Self {
-        Self {
-            id: value.id,
-            username: value.username,
-            friends: vec![],
-        }
+        value.user
     }
 }
 

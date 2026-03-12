@@ -1,6 +1,6 @@
 use axum::{Json, extract::State, http::StatusCode};
 use common::{
-    User,
+    NewUser, User,
     api::{
         ApiResponse, BalanceEntry, BalanceRequest, CreateExpenseResponse, CreateGroupResponse,
         ExpenseRequest, GetExpenseResponse, GetGroupResponse, GetUserResponse, GroupBalance,
@@ -48,20 +48,11 @@ pub async fn user_handler(
     Json(payload): Json<UserRequest>,
 ) -> (StatusCode, Json<ApiResponse<serde_json::Value>>) {
     match payload {
-        UserRequest::Register { username } => {
-            let id = Uuid::new_v4();
-            let user = User {
-                id,
-                username,
-                friends: vec![],
-            };
+        UserRequest::Register { user } => {
             debug!("Register user: {:?}", user);
             match state.register_user(user).await {
                 Ok(u) => {
-                    let resp = RegisterResponse {
-                        id: u.id,
-                        username: u.username,
-                    };
+                    let resp = RegisterResponse { user: u };
                     json_success(StatusCode::CREATED, serde_json::to_value(resp).unwrap())
                 }
                 Err(_) => json_error(StatusCode::BAD_REQUEST, "Failed to register user"),

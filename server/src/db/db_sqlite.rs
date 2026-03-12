@@ -69,21 +69,60 @@ impl SqliteStore {
 #[async_trait::async_trait]
 impl Store for SqliteStore {
     async fn create_user(&self, user: UserRow) -> Result<UserRow> {
-        let res = sqlx::query(
+        // find if old email already exists but is deleted.
+        // Allow for complete reinstatiation
+        let old_user: Option<UserRow> = sqlx::query_as(
             r#"
-            INSERT INTO users (id, username, email, password_hash, created_at, updated_at, deleted_at)
-            VALUES ($1, $2, $3, $4, $5, $6, $7)
+            SELECT id, username, email, password_hash, created_at, updated_at, deleted_at
+            FROM users
+            WHERE email = $1 AND deleted_at IS NOT NULL
             "#,
         )
-        .bind(user.id)
-        .bind(&user.username)
-        .bind(&user.email)
-        .bind(&user.password_hash)
-        .bind(user.created_at.to_rfc3339())
-        .bind(user.updated_at.to_rfc3339())
-        .bind(user.deleted_at.map(|dt| dt.to_rfc3339()))
-        .execute(&self.pool)
-        .await;
+        .bind(user.email.clone())
+        .fetch_optional(&self.pool)
+        .await?;
+
+        // FIXME: Can add an duplicate email here...
+        let res = if let Some(u) = old_user {
+            sqlx::query(
+                r#"
+                    UPDATE users
+                    SET
+                        id = $1,
+                        username = $2,
+                        password_hash = $3,
+                        created_at = $4,
+                        updated_at = $5,
+                        deleted_at = $6
+                    WHERE email = $7;
+                "#,
+            )
+            .bind(user.id)
+            .bind(&user.username)
+            .bind(&user.password_hash)
+            .bind(user.created_at.to_rfc3339())
+            .bind(user.updated_at.to_rfc3339())
+            .bind(user.deleted_at.map(|dt| dt.to_rfc3339()))
+            .bind(&user.email)
+            .execute(&self.pool)
+            .await
+        } else {
+            sqlx::query(
+                r#"
+                INSERT INTO users (id, username, email, password_hash, created_at, updated_at, deleted_at)
+                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                "#,
+            )
+            .bind(user.id)
+            .bind(&user.username)
+            .bind(&user.email)
+            .bind(&user.password_hash)
+            .bind(user.created_at.to_rfc3339())
+            .bind(user.updated_at.to_rfc3339())
+            .bind(user.deleted_at.map(|dt| dt.to_rfc3339()))
+            .execute(&self.pool)
+            .await
+        };
 
         match res {
             Ok(sql_res) => {
@@ -102,7 +141,7 @@ impl Store for SqliteStore {
             r#"
             SELECT id, username, email, password_hash, created_at, updated_at, deleted_at
             FROM users
-            WHERE id = $1
+            WHERE id = $1 AND deleted_at IS NULL
             "#,
         )
         .bind(id)
@@ -119,13 +158,13 @@ impl Store for SqliteStore {
             .get_user(id)
             .await?
             .ok_or_else(|| anyhow!("User not found"))?;
-        user.deleted_at =
+        user.deleted_at = // TODO: Move to state
             Some(chrono::Utc::now().with_timezone(&chrono::FixedOffset::east_opt(0).unwrap()));
 
         print_sql_result(
             sqlx::query(
                 r#"
-            UPDATE FROM users
+            UPDATE users
             SET deleted_at = $1
             WHERE id = $2
             "#,
@@ -192,14 +231,15 @@ impl Store for SqliteStore {
             sqlx::query_as(
                 r#"
             SELECT
-                id
-                username
-                email
-                password_hash
-                created_at
-                updated_at
+                id,
+                username,
+                email,
+                password_hash,
+                created_at,
+                updated_at,
                 deleted_at
             FROM users
+            WHERE deleted_at is NULL
             "#,
             )
             .fetch_all(&self.pool)

@@ -1,23 +1,32 @@
 // These are more integration tests and scenario tests that are more complex.
 use anyhow::anyhow;
-use common::{
-    api::{GetGroupResponse, GetUserResponse},
-    GroupId, User, UserId,
-};
+use common::{GroupId, NewUser};
 use rust_kvittis_client::kvittis_client::KvittisClient;
 
 const BASE_URL: &str = "http://localhost:3000";
+const PASSWORD: &str = "secret_password";
+
+// ====== Helpers =======
+
+fn create_new_user(username: String) -> NewUser {
+    let email = username.clone() + "@gmail.com";
+    NewUser {
+        username,
+        email,
+        password: PASSWORD.to_owned(),
+    }
+}
 
 // ====== Basic Testing ======
 
 #[tokio::test]
 async fn test_register_user() -> anyhow::Result<()> {
     let client = KvittisClient::new(BASE_URL)?;
-    let username = "register_test_user";
-    let user = client.register_user(username).await?;
-    assert_eq!(user.username, username);
-    let resp = client.get_user(user.id).await?;
-    assert_eq!(resp.username, username);
+    let new_user = create_new_user("register_test_user".to_owned());
+    let user = client.register_user(new_user.clone()).await?.user;
+    assert_eq!(user.username, new_user.username);
+    let resp = client.get_user(user.id).await?.user;
+    assert_eq!(resp.username, new_user.username);
 
     // Cleanup
     client.delete_user(user.id).await?;
@@ -27,11 +36,11 @@ async fn test_register_user() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_delete_user() -> anyhow::Result<()> {
     let client = KvittisClient::new(BASE_URL)?;
-    let username = "delete_test_user";
-    let user = client.register_user(username).await?;
+    let new_user = create_new_user("test_delete_user".to_owned());
+    let user = client.register_user(new_user.clone()).await?.user;
 
-    let resp = client.get_user(user.id).await?;
-    assert_eq!(resp.username, username);
+    let resp = client.get_user(user.id).await?.user;
+    assert_eq!(resp.username, new_user.username);
 
     // Cleanup
     client.delete_user(user.id).await?;
@@ -46,15 +55,15 @@ async fn test_delete_user() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_get_users() -> anyhow::Result<()> {
     let client = KvittisClient::new(BASE_URL)?;
-    let username1 = "get_users_test_user1";
-    let username2 = "get_users_test_user2";
-    let user1 = client.register_user(username1).await?;
-    let user2 = client.register_user(username2).await?;
+    let new_user1 = create_new_user("get_users_test_user1".to_owned());
+    let new_user2 = create_new_user("get_users_test_user2".to_owned());
+    let user1 = client.register_user(new_user1.clone()).await?.user;
+    let user2 = client.register_user(new_user2.clone()).await?.user;
 
     let users = client.get_users().await?;
-    let usernames: Vec<String> = users.iter().map(|u| u.username.clone()).collect();
-    assert!(usernames.contains(&username1.to_string()));
-    assert!(usernames.contains(&username2.to_string()));
+    let usernames: Vec<String> = users.iter().map(|u| u.user.username.clone()).collect();
+    assert!(usernames.contains(&new_user1.username.to_string()));
+    assert!(usernames.contains(&new_user2.username.to_string()));
 
     client.delete_user(user1.id).await?;
     client.delete_user(user2.id).await?;
@@ -65,22 +74,28 @@ async fn test_get_users() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_search_users() -> anyhow::Result<()> {
     let client = KvittisClient::new(BASE_URL)?;
-    let username1 = "search_users_test_user1";
-    let username2 = "search_users_test_user2";
-    let user1 = client.register_user(username1).await?;
-    let user2 = client.register_user(username2).await?;
+    let new_user1 = create_new_user("search_users_test_user1".to_owned());
+    let new_user2 = create_new_user("search_users_test_user2".to_owned());
+    let user1 = client.register_user(new_user1.clone()).await?.user;
+    let user2 = client.register_user(new_user2.clone()).await?.user;
 
     let search_results = client.search_users("search_users_test").await?;
     dbg!(&search_results);
-    let usernames: Vec<String> = search_results.iter().map(|u| u.username.clone()).collect();
-    assert!(usernames.contains(&username1.to_string()));
-    assert!(usernames.contains(&username2.to_string()));
+    let usernames: Vec<String> = search_results
+        .iter()
+        .map(|u| u.user.username.clone())
+        .collect();
+    assert!(usernames.contains(&new_user1.username.to_string()));
+    assert!(usernames.contains(&new_user2.username.to_string()));
 
     let search_results = client.search_users("user1").await?;
     dbg!(&search_results);
-    let usernames: Vec<String> = search_results.iter().map(|u| u.username.clone()).collect();
-    assert!(usernames.contains(&username1.to_string()));
-    assert!(!usernames.contains(&username2.to_string()));
+    let usernames: Vec<String> = search_results
+        .iter()
+        .map(|u| u.user.username.clone())
+        .collect();
+    assert!(usernames.contains(&new_user1.username.to_string()));
+    assert!(!usernames.contains(&new_user2.username.to_string()));
 
     client.delete_user(user1.id).await?;
     client.delete_user(user2.id).await?;
@@ -90,7 +105,8 @@ async fn test_search_users() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_create_group() -> anyhow::Result<()> {
     let client = KvittisClient::new(BASE_URL)?;
-    let user = client.register_user("create_group_owner").await?;
+    let new_user = create_new_user("create_group_owner".to_owned());
+    let user = client.register_user(new_user.clone()).await?.user;
     let group_name = "create_test_group";
     let group = client
         .create_group(group_name, user.id, vec![user.id])
@@ -108,7 +124,8 @@ async fn test_create_group() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_delete_group() -> anyhow::Result<()> {
     let client = KvittisClient::new(BASE_URL)?;
-    let user = client.register_user("delete_group_owner").await?;
+    let new_user = create_new_user("delete_group_owner".to_owned());
+    let user = client.register_user(new_user.clone()).await?.user;
     let group_name = "delete_test_group";
     let group = client
         .create_group(group_name, user.id, vec![user.id])
@@ -130,8 +147,10 @@ async fn test_delete_group() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_add_user_to_group() -> anyhow::Result<()> {
     let client = KvittisClient::new(BASE_URL)?;
-    let owner = client.register_user("add_user_to_group_owner").await?;
-    let member = client.register_user("add_user_to_group_member").await?;
+    let new_user_owner = create_new_user("add_user_to_group_owner".to_owned());
+    let new_user_member = create_new_user("add_user_to_group_member".to_owned());
+    let owner = client.register_user(new_user_owner.clone()).await?.user;
+    let member = client.register_user(new_user_member.clone()).await?.user;
     let group_name = "add_user_to_group_test_group";
     let group = client
         .create_group(group_name, owner.id, vec![owner.id])
@@ -152,7 +171,8 @@ async fn test_add_user_to_group() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_get_group_by_name() -> anyhow::Result<()> {
     let client = KvittisClient::new(BASE_URL)?;
-    let owner = client.register_user("get_group_by_name_owner").await?;
+    let new_user = create_new_user("get_group_by_name_owner".to_owned());
+    let owner = client.register_user(new_user.clone()).await?.user;
     let group_name = "get_group_by_name_test_group";
     let group = client
         .create_group(group_name, owner.id, vec![owner.id])
@@ -177,9 +197,12 @@ async fn test_get_group_by_name() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_create_expense() -> anyhow::Result<()> {
     let client = KvittisClient::new(BASE_URL)?;
-    let payer = client.register_user("create_expense_payer").await?;
-    let borrower1 = client.register_user("create_expense_borrower1").await?;
-    let borrower2 = client.register_user("create_expense_borrower2").await?;
+    let new_user_payer = create_new_user("create_expense_payer".to_owned());
+    let new_user_borrower1 = create_new_user("create_expense_borrower1".to_owned());
+    let new_user_borrower2 = create_new_user("create_expense_borrower2".to_owned());
+    let payer = client.register_user(new_user_payer.clone()).await?.user;
+    let borrower1 = client.register_user(new_user_borrower1.clone()).await?.user;
+    let borrower2 = client.register_user(new_user_borrower2.clone()).await?.user;
     let description = "Test expense".to_string();
 
     let expense = client
@@ -210,9 +233,12 @@ async fn test_create_expense() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_get_expense() -> anyhow::Result<()> {
     let client = KvittisClient::new(BASE_URL)?;
-    let payer = client.register_user("get_expense_payer").await?;
-    let borrower1 = client.register_user("get_expense_borrower1").await?;
-    let borrower2 = client.register_user("get_expense_borrower2").await?;
+    let new_user_payer = create_new_user("get_expense_payer".to_owned());
+    let new_user_borrower1 = create_new_user("get_expense_borrower1".to_owned());
+    let new_user_borrower2 = create_new_user("get_expense_borrower2".to_owned());
+    let payer = client.register_user(new_user_payer).await?.user;
+    let borrower1 = client.register_user(new_user_borrower1).await?.user;
+    let borrower2 = client.register_user(new_user_borrower2).await?.user;
     let description = "Test expense".to_string();
 
     let expense = client
@@ -244,9 +270,12 @@ async fn test_get_expense() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_delete_expense() -> anyhow::Result<()> {
     let client = KvittisClient::new(BASE_URL)?;
-    let payer = client.register_user("delete_expense_payer").await?;
-    let borrower1 = client.register_user("delete_expense_borrower1").await?;
-    let borrower2 = client.register_user("delete_expense_borrower2").await?;
+    let new_user_payer = create_new_user("delete_expense_payer".to_owned());
+    let new_user_borrower1 = create_new_user("delete_expense_borrower1".to_owned());
+    let new_user_borrower2 = create_new_user("delete_expense_borrower2".to_owned());
+    let payer = client.register_user(new_user_payer).await?.user;
+    let borrower1 = client.register_user(new_user_borrower1).await?.user;
+    let borrower2 = client.register_user(new_user_borrower2).await?.user;
     let description = "Test expense".to_string();
 
     let expense = client
