@@ -83,7 +83,7 @@ impl Store for SqliteStore {
         .await?;
 
         // FIXME: Can add an duplicate email here...
-        let res = if let Some(u) = old_user {
+        let res = if let Some(_u) = old_user {
             sqlx::query(
                 r#"
                     UPDATE users

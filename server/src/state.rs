@@ -3,7 +3,7 @@ use std::sync::Arc;
 use anyhow::{Result, anyhow};
 use chrono::{DateTime, FixedOffset, Utc};
 use tokio::sync::RwLock;
-use tracing::{debug, info, warn};
+use tracing::debug;
 use uuid::Uuid;
 
 use crate::db::{ExpenseRow, GroupRow, Store, UserRow};
@@ -337,7 +337,7 @@ impl AppState {
             .await?
             .ok_or_else(|| anyhow!("Group not found"))?;
         group.members.push(req.new_member);
-        let stored = guard.store.update_group(group.clone().into()).await?;
+        let stored = guard.store.update_group(group.clone()).await?;
         Ok(stored.into())
     }
 }

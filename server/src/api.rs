@@ -1,15 +1,11 @@
 use axum::{Json, extract::State, http::StatusCode};
-use common::{
-    NewUser, User,
-    api::{
-        ApiResponse, BalanceEntry, BalanceRequest, CreateExpenseResponse, CreateGroupResponse,
-        ExpenseRequest, GetExpenseResponse, GetGroupResponse, GetUserResponse, GroupBalance,
-        GroupRequest, RegisterResponse, UserRequest,
-    },
+use common::api::{
+    ApiResponse, BalanceRequest, CreateExpenseResponse, CreateGroupResponse, ExpenseRequest,
+    GetExpenseResponse, GetGroupResponse, GetUserResponse, GroupRequest, RegisterResponse,
+    UserRequest,
 };
 use serde::Serialize;
 use tracing::debug;
-use uuid::Uuid;
 
 use crate::state::AppState;
 
