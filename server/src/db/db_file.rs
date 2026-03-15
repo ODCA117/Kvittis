@@ -82,8 +82,13 @@ impl Store for FileStore {
         Ok(user)
     }
 
-    async fn get_user(&self, id: UserId) -> Result<Option<UserRow>> {
+    async fn get_user_by_id(&self, id: UserId) -> Result<Option<UserRow>> {
         Ok(self.state.read().await.users.get(&id).cloned())
+    }
+
+    async fn get_user_by_name(&self, name: String) -> Result<Option<UserRow>> {
+        let guard = self.state.read().await;
+        Ok(guard.users.values().find(|u| u.username.eq(&name)).cloned())
     }
 
     async fn delete_user(&self, id: UserId) -> Result<()> {

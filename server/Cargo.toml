@@ -4,19 +4,37 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+# Common library of Kvittis
 common = {path = "../common"}
-axum = { version = "0.8", features = ["macros"] }
+
+# Asyc handling
 tokio = { version = "1", features = ["full"] }
-serde = { version = "1.0", features = ["derive"] }
-serde_json = "1.0"
-uuid = { version = "1", features = ["v4", "serde"] }
-parking_lot = "0.12"
+async-trait = "0.1.89"
+
+# Logging
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-chrono = { version = "0.4.42", features = ["serde"] }
-anyhow = "1.0.100"
+
+# Webserver
+axum = { version = "0.8", features = ["macros"] }
+axum-extra = { version = "0.12.5", features = ["typed-header"] }
 tower = "0.5.2"
 tower-http = { version = "0.6.7", features = ["trace"] }
-clap = { version = "4.5.53", features = ["derive"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
 sqlx = { version = "0.8", features = ["sqlite", "runtime-tokio", "macros", "uuid"] }
-async-trait = "0.1.89"
+
+# Security
+jsonwebtoken = { version = "10.3.0", features = ["rust_crypto"] }
+argon2 = "0.5.3"
+#argon2 depends on this version, should bump when we can.
+rand_core = { version = "0.6", features = ["getrandom"] }
+
+# Utility
+uuid = { version = "1", features = ["v4", "serde"] }
+parking_lot = "0.12"
+chrono = { version = "0.4.42", features = ["serde"] }
+anyhow = "1.0.100"
+clap = { version = "4.5.53", features = ["derive"] }
+# See if implementing my own version of this (do not depend on library for this???)
+dotenv = "0.15.0"

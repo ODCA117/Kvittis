@@ -9,6 +9,13 @@ pub struct RegisterResponse {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct LoginResponse {
+    pub user: User,
+    pub token: String,
+    pub token_type: TokenType,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct GetUserResponse {
     pub user: User,
 }
@@ -87,13 +94,20 @@ pub struct DeleteExpenseRequest {
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "action", rename_all = "snake_case")]
-pub enum UserRequest {
+pub enum UnauthorizedUserRequest {
     Register { user: NewUser },
+    Login { username: String, password: String },
+}
+
+#[derive(Serialize, Deserialize, Debug, Clone)]
+#[serde(tag = "action", rename_all = "snake_case")]
+pub enum AuthorizedUserRequest {
     Get { user_id: UserId },
     Delete { user_id: UserId },
     List,
     Search { query: String },
     AddFriend { user_id: UserId, friend_id: UserId },
+    Logout,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -250,4 +264,9 @@ impl From<Expense> for GetExpenseResponse {
             timestamp_ms: value.timestamp_ms,
         }
     }
+}
+
+#[derive(Debug, Serialize, Deserialize)]
+pub enum TokenType {
+    Bearer,
 }

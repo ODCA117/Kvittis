@@ -136,7 +136,7 @@ impl Store for SqliteStore {
         }
     }
 
-    async fn get_user(&self, id: UserId) -> Result<Option<UserRow>> {
+    async fn get_user_by_id(&self, id: UserId) -> Result<Option<UserRow>> {
         let user: Option<UserRow> = sqlx::query_as(
             r#"
             SELECT id, username, email, password_hash, created_at, updated_at, deleted_at
@@ -152,10 +152,26 @@ impl Store for SqliteStore {
         Ok(user)
     }
 
+    async fn get_user_by_name(&self, name: String) -> Result<Option<UserRow>> {
+        let user: Option<UserRow> = sqlx::query_as(
+            r#"
+            SELECT id, username, email, password_hash, created_at, updated_at, deleted_at
+            FROM users
+            WHERE username = $1 AND deleted_at IS NULL
+            "#,
+        )
+        .bind(name)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        info!(" USER: {:?}", &user);
+        Ok(user)
+    }
+
     /* Should not delete. Do soft delete instead */
     async fn delete_user(&self, id: UserId) -> Result<()> {
         let mut user = self
-            .get_user(id)
+            .get_user_by_id(id)
             .await?
             .ok_or_else(|| anyhow!("User not found"))?;
         user.deleted_at = // TODO: Move to state
@@ -690,7 +706,7 @@ fn print_sql_result<T>(res: Result<T, sqlx::Error>) -> Result<T> {
     }
 }
 
-fn build_user_from_row(row: SqliteRow) -> Result<UserRow> {
+fn _build_user_from_row(row: SqliteRow) -> Result<UserRow> {
     let id: UserId = row.get("id");
     let username: String = row.get("username");
     let email: String = row.get("email");

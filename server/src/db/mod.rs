@@ -12,7 +12,8 @@ use common::{ExpenseId, GroupId, UserId};
 pub trait Store: Send + Sync {
     // --- Users ---
     async fn create_user(&self, user: UserRow) -> Result<UserRow>;
-    async fn get_user(&self, id: UserId) -> Result<Option<UserRow>>;
+    async fn get_user_by_id(&self, id: UserId) -> Result<Option<UserRow>>;
+    async fn get_user_by_name(&self, username: String) -> Result<Option<UserRow>>;
     async fn delete_user(&self, id: UserId) -> Result<()>;
     async fn list_users(&self) -> Result<Vec<UserRow>>;
     async fn add_friend(&self, user1: UserId, user2: UserId) -> Result<()>;

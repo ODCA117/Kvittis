@@ -1,11 +1,18 @@
-use axum::{Json, extract::State, http::StatusCode};
-use common::api::{
-    ApiResponse, BalanceRequest, CreateExpenseResponse, CreateGroupResponse, ExpenseRequest,
-    GetExpenseResponse, GetGroupResponse, GetUserResponse, GroupRequest, RegisterResponse,
-    UserRequest,
+use axum::{
+    Json,
+    extract::{FromRef, FromRequestParts, State},
+    http::{self, StatusCode},
+    response::{IntoResponse, Response},
 };
-use serde::Serialize;
-use tracing::debug;
+use common::api::{
+    ApiResponse, AuthorizedUserRequest, BalanceRequest, CreateExpenseResponse, CreateGroupResponse,
+    ExpenseRequest, GetExpenseResponse, GetGroupResponse, GetUserResponse, GroupRequest,
+    LoginResponse, RegisterResponse, UnauthorizedUserRequest,
+};
+use serde::{Deserialize, Serialize};
+use serde_json::json;
+use tracing::{debug, info, warn};
+use uuid::Uuid;
 
 use crate::state::AppState;
 
@@ -20,6 +27,70 @@ fn json_error<T: Serialize>(
             message: message.to_string(),
         }),
     )
+}
+
+#[derive(Debug)]
+pub enum AuthError {
+    _WrongCredentials,
+    _MissingCredentials,
+    _TokenCreation,
+    InvalidToken,
+}
+
+// TODO: Maybe move this?
+#[derive(Debug, Serialize, Deserialize)]
+pub struct Claims {
+    pub sub: Uuid,
+    pub app: String,
+    pub exp: usize,
+}
+
+impl<S> FromRequestParts<S> for Claims
+where
+    S: Send + Sync,
+    AppState: FromRef<S>,
+{
+    type Rejection = AuthError; // Need to implement IntoResponse
+
+    async fn from_request_parts(
+        parts: &mut axum::http::request::Parts,
+        state: &S,
+    ) -> Result<Self, Self::Rejection> {
+        let state = AppState::from_ref(state);
+        match state
+            .validate_jwt(parts)
+            .await
+            .map_err(|_| AuthError::InvalidToken)
+        {
+            Ok(token_data) => {
+                info!("Validation successfull");
+                Ok(token_data.claims)
+            }
+            Err(e) => {
+                warn!("Validation failed");
+                Err(e)
+            }
+        }
+    }
+}
+
+impl IntoResponse for AuthError {
+    fn into_response(self) -> Response {
+        let (status, error_message) = match self {
+            AuthError::_WrongCredentials => (http::StatusCode::UNAUTHORIZED, "Wrong credentials"),
+            AuthError::_MissingCredentials => {
+                (http::StatusCode::BAD_REQUEST, "Missing credentials")
+            }
+            AuthError::_TokenCreation => (
+                http::StatusCode::INTERNAL_SERVER_ERROR,
+                "Token creation error",
+            ),
+            AuthError::InvalidToken => (http::StatusCode::BAD_REQUEST, "Invalid token"),
+        };
+
+        let body = Json(json!({ "error": error_message }));
+        (status, body).into_response()
+    }
 }
 
 // Helper function for success responses
@@ -37,14 +108,15 @@ fn json_not_implemented<T: Serialize>() -> (StatusCode, Json<ApiResponse<T>>) {
 }
 
 // ── User handler ──────────────────────────────────────────────────────────────
-
 #[axum::debug_handler]
-pub async fn user_handler(
+pub async fn unauthorized_user_handler(
     State(state): State<AppState>,
-    Json(payload): Json<UserRequest>,
+    Json(payload): Json<UnauthorizedUserRequest>,
 ) -> (StatusCode, Json<ApiResponse<serde_json::Value>>) {
+    //FIXME: This will show passwords in logs...
+    debug!("Unauthenticated request: Payload: {:?}", payload);
     match payload {
-        UserRequest::Register { user } => {
+        UnauthorizedUserRequest::Register { user } => {
             debug!("Register user: {:?}", user);
             match state.register_user(user).await {
                 Ok(u) => {
@@ -55,7 +127,40 @@ pub async fn user_handler(
             }
         }
 
-        UserRequest::Get { user_id } => {
+        UnauthorizedUserRequest::Login { username, password } => {
+            debug!("Loging user: {:?}", username);
+            match state.login_user(username, password).await {
+                Ok((user, token, token_type)) => {
+                    let resp = LoginResponse {
+                        user,
+                        token,
+                        token_type,
+                    };
+                    json_success(StatusCode::OK, serde_json::to_value(resp).unwrap())
+                }
+                Err(_) => json_error(StatusCode::UNAUTHORIZED, "Authentication failed"),
+            }
+        }
+    }
+}
+
+#[axum::debug_handler]
+pub async fn authorized_user_handler(
+    State(state): State<AppState>,
+    claims: Claims,
+    Json(payload): Json<AuthorizedUserRequest>,
+) -> (StatusCode, Json<ApiResponse<serde_json::Value>>) {
+    debug!(
+        "Authenticated request: Payload: {:?}, Claims: {:?}",
+        payload, claims
+    );
+    match payload {
+        AuthorizedUserRequest::Logout => {
+            warn!("Do not really know how to make this work yet");
+            json_not_implemented()
+        }
+
+        AuthorizedUserRequest::Get { user_id } => {
             debug!("Get user: {:?}", user_id);
             match state.get_user(user_id).await {
                 Ok(u) => {
@@ -66,7 +171,7 @@ pub async fn user_handler(
             }
         }
 
-        UserRequest::Delete { user_id } => {
+        AuthorizedUserRequest::Delete { user_id } => {
             debug!("Delete user: {:?}", user_id);
             match state.delete_user(user_id).await {
                 Ok(_) => json_success(
@@ -77,7 +182,7 @@ pub async fn user_handler(
             }
         }
 
-        UserRequest::List => {
+        AuthorizedUserRequest::List => {
             debug!("List users");
             match state.get_users().await {
                 Ok(users) => {
@@ -88,7 +193,7 @@ pub async fn user_handler(
             }
         }
 
-        UserRequest::Search { query } => {
+        AuthorizedUserRequest::Search { query } => {
             debug!("Search users: {:?}", query);
             match state.search_users(&query).await {
                 Ok(users) => {
@@ -99,7 +204,7 @@ pub async fn user_handler(
             }
         }
 
-        UserRequest::AddFriend { user_id, friend_id } => {
+        AuthorizedUserRequest::AddFriend { user_id, friend_id } => {
             debug!("Add friend: user={:?} friend={:?}", user_id, friend_id);
             match state.add_friend(user_id, friend_id).await {
                 Ok(_) => json_success(

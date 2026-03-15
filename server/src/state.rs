@@ -1,11 +1,22 @@
 use std::sync::Arc;
+use std::sync::LazyLock;
 
 use anyhow::{Result, anyhow};
-use chrono::{DateTime, FixedOffset, Utc};
+use argon2::PasswordVerifier;
+use argon2::password_hash::rand_core::OsRng;
+use argon2::{Argon2, PasswordHash, PasswordHasher, password_hash::SaltString};
+use axum::RequestPartsExt;
+use axum_extra::TypedHeader;
+use axum_extra::headers::Authorization;
+use axum_extra::headers::authorization::Bearer;
+use chrono::{DateTime, FixedOffset, TimeDelta, Utc};
+use jsonwebtoken::TokenData;
+use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use tokio::sync::RwLock;
 use tracing::debug;
 use uuid::Uuid;
 
+use crate::api::Claims;
 use crate::db::{ExpenseRow, GroupRow, Store, UserRow};
 use std::collections::HashMap;
 
@@ -13,9 +24,28 @@ use common::{
     Expense, Group, GroupId, NewUser, User, UserId,
     api::{
         BalanceEntry, CreateExpenseRequest, CreateGroupRequest, DeleteExpenseRequest,
-        GetExpenseRequest, GroupBalance, NewGroupMemberRequest,
+        GetExpenseRequest, GroupBalance, NewGroupMemberRequest, TokenType,
     },
 };
+
+static KEYS: LazyLock<Keys> = LazyLock::new(|| {
+    let secret = std::env::var("JWT_SECRET").expect("JWT_SECRET must be set");
+    Keys::new(secret.as_bytes())
+});
+
+struct Keys {
+    encoding: EncodingKey,
+    decoding: DecodingKey,
+}
+
+impl Keys {
+    fn new(secret: &[u8]) -> Self {
+        Self {
+            encoding: EncodingKey::from_secret(secret),
+            decoding: DecodingKey::from_secret(secret),
+        }
+    }
+}
 
 struct AppStateData {
     store: Box<dyn Store>,
@@ -41,6 +71,23 @@ impl AppState {
         }
     }
 
+    pub async fn validate_jwt(
+        &self,
+        parts: &mut axum::http::request::Parts,
+    ) -> Result<TokenData<Claims>> {
+        debug!("Validate user");
+        let TypedHeader(Authorization(bearer)) = parts
+            .extract::<TypedHeader<Authorization<Bearer>>>()
+            .await
+            .map_err(|_| anyhow!("Invalid Token"))?;
+        debug!("Token data: {:?}", bearer.token());
+        let token_data =
+            jsonwebtoken::decode::<Claims>(bearer.token(), &KEYS.decoding, &Validation::default())
+                .map_err(|_| anyhow!("Invalid Token"))?;
+
+        Ok(token_data)
+    }
+
     pub async fn register_user(&self, user: NewUser) -> Result<User> {
         let guard = self.data.write().await;
         let user = create_user_row_from_new_user(user);
@@ -51,9 +98,52 @@ impl AppState {
         Ok(stored.into())
     }
 
+    pub async fn login_user(
+        &self,
+        username: String,
+        password: String,
+    ) -> Result<(User, String, TokenType)> {
+        let guard = self.data.read().await;
+        let user = guard
+            .store
+            .get_user_by_name(username)
+            .await?
+            .ok_or(anyhow!("Authentication failed"))?;
+
+        let parsed_hash =
+            PasswordHash::new(&user.password_hash).map_err(|_| anyhow!("Authentication failed"))?;
+        debug!("Password, hash:{:?}", parsed_hash);
+        let new_hash = Argon2::default()
+            .hash_password(password.as_bytes(), parsed_hash.salt.unwrap())
+            .map_err(|_| anyhow!("failed to authenticate"))?
+            .to_string();
+        let new_parsed_hash =
+            PasswordHash::new(&new_hash).map_err(|_| anyhow!("Authentication failed"))?;
+
+        // FIXME: Seem to get the wrong hash for some reason...
+        debug!("new Passowrd hash: {:?}", new_parsed_hash);
+
+        Argon2::default()
+            .verify_password(password.as_bytes(), &parsed_hash)
+            .map_err(|_| anyhow!("Authentication failed"))?;
+
+        let now =
+            Utc::now() + TimeDelta::try_hours(24).expect("Should fit 24 hours in the TimeDelta");
+        let claims = Claims {
+            sub: user.id,
+            app: "Kvittis".to_owned(),
+            exp: now.timestamp() as usize,
+        };
+
+        let token = jsonwebtoken::encode(&Header::default(), &claims, &KEYS.encoding)?;
+        debug!("token: {:?}", token);
+
+        Ok((user.into(), token, TokenType::Bearer))
+    }
+
     pub async fn get_user(&self, id: UserId) -> Result<User> {
         let guard = self.data.read().await;
-        match guard.store.get_user(id).await? {
+        match guard.store.get_user_by_id(id).await? {
             Some(u) => Ok(u.into()),
             None => Err(anyhow!("Failed to get user")),
         }
@@ -94,7 +184,7 @@ impl AppState {
     }
 
     // FIXME: This should require some form of confirmation/authentication
-    pub async fn edit_user(&self, updated_user: User) -> Result<User> {
+    pub async fn _edit_user(&self, updated_user: User) -> Result<User> {
         let guard = self.data.write().await;
         let stored = guard.store.update_user(updated_user.into()).await?;
         Ok(stored.into())
@@ -345,11 +435,15 @@ impl AppState {
 fn create_user_row_from_new_user(new_user: NewUser) -> UserRow {
     let now = Utc::now();
     let date_time = now.with_timezone(&FixedOffset::east_opt(0).unwrap());
+    let salt = SaltString::generate(&mut OsRng);
     UserRow {
         id: Uuid::new_v4(),
-        username: new_user.username,
+        username: new_user.username.clone(),
         email: new_user.email,
-        password_hash: new_user.password,
+        password_hash: Argon2::default()
+            .hash_password(new_user.password.as_bytes(), &salt)
+            .unwrap()
+            .to_string(),
         created_at: date_time,
         updated_at: date_time,
         deleted_at: None,

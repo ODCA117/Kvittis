@@ -5,23 +5,26 @@ mod logger;
 mod state;
 mod types;
 
-use crate::db::db_file::FileStore;
 use crate::db::db_sqlite::SqliteStore;
 use crate::state::AppState;
+use crate::{api::unauthorized_user_handler, db::db_file::FileStore};
 use axum::{Router, routing::post};
 use clap::Parser;
+use dotenv::dotenv;
 use std::{net::SocketAddr, path::Path};
 use tower::ServiceBuilder;
 use tower_http::trace::TraceLayer;
 use tracing::info;
 
-use crate::api::{balance_handler, expense_handler, group_handler, user_handler};
+use crate::api::{authorized_user_handler, balance_handler, expense_handler, group_handler};
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     logger::init();
     let args = cli::Args::parse();
     println!("args: {:?}", args);
+
+    dotenv().ok();
 
     /* Data path */
     // Connect to database
@@ -41,9 +44,14 @@ async fn main() -> anyhow::Result<()> {
         }
     };
 
+    /* Install cryptop provider */
+    // CryptoProvider::install_default(&'static self)
+    // CryptoProvider::install_default().expect("Failed to install default CryptoProvider");
+
     /* API routes */
     let app = Router::new()
-        .route("/api/user", post(user_handler))
+        .route("/api/auth_user", post(authorized_user_handler)) // TODO: Learn how this just works
+        .route("/api/unauth_user", post(unauthorized_user_handler)) // TODO: Learn how this just works
         .route("/api/group", post(group_handler))
         .route("/api/expense", post(expense_handler))
         .route("/api/balance", post(balance_handler))
