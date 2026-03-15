@@ -5,6 +5,14 @@ Track shared expenses, settle debts, and keep everything fair — all in one pla
 
 ---
 
+
+## Todo:
+- Add authentication (JWT)
+- Implement different permission levels (admin, user, group_member)
+- Group add balance summary
+- Group add easy settle to reduce number of transactions to settle a group balance.
+- Add email handler? (otherwise remove email)
+
 ## Workspace overview
 
 The project is a Cargo workspace containing three crates:
@@ -23,14 +31,14 @@ The project is a Cargo workspace containing three crates:
 
 ```
 ┌─────────────┐   HTTP/JSON   ┌──────────────────────────────────────────────┐
-│  test_client │ ────────────► │                   server                     │
+│ test_client │ ────────────► │                   server                     │
 │  (or UI)    │ ◄──────────── │                                              │
 └─────────────┘               │  main.rs  ──►  api.rs  ──►  state.rs         │
-                               │                               │              │
-                               │                         db/mod.rs (Store)    │
-                               │                        /              \      │
-                               │              db_sqlite.rs          db_file.rs│
-                               └──────────────────────────────────────────────┘
+                              │                               │              │
+                              │                         db/mod.rs (Store)    │
+                              │                        /              \      │
+                              │              db_sqlite.rs          db_file.rs│
+                              └──────────────────────────────────────────────┘
 ```
 
 ### `common/`
