@@ -26,3 +26,8 @@ target
 # Added by cargo
 
 /target
+
+# Frontend
+/frontend/node_modules
+/frontend/static/*.js
+/frontend/static/*.js.map

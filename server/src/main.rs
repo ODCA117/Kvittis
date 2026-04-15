@@ -13,7 +13,7 @@ use clap::Parser;
 use dotenv::dotenv;
 use std::{net::SocketAddr, path::Path};
 use tower::ServiceBuilder;
-use tower_http::trace::TraceLayer;
+use tower_http::{services::ServeDir, trace::TraceLayer};
 use tracing::info;
 
 use crate::api::{authorized_user_handler, balance_handler, expense_handler, group_handler};
@@ -56,7 +56,9 @@ async fn main() -> anyhow::Result<()> {
         .route("/api/expense", post(expense_handler))
         .route("/api/balance", post(balance_handler))
         .layer(ServiceBuilder::new().layer(TraceLayer::new_for_http()))
-        .with_state(state.clone());
+        .with_state(state.clone())
+        // Serve static files from frontend/static directory
+        .fallback_service(ServeDir::new("frontend/static"));
 
     let ip = args.ip.parse().expect("Failed to parse IP address");
     let addr = SocketAddr::new(ip, args.port);
