@@ -1,31 +1,49 @@
 <script>
-    import { token, currentUser, isLoading, clearToken, saveToken, allUsers, balances, expenses, groups } from './lib/stores.js';
-    import { login, listUsers, listExpensesForUser, getUserBalances, listGroups, isError } from './lib/api.js';
-    import Auth from './components/Auth.svelte';
-    import Dashboard from './components/Dashboard.svelte';
-    import GroupsPage from './components/Groups.svelte';
-    import LoadingOverlay from './components/LoadingOverlay.svelte';
-    import Header from './components/Header.svelte';
-    import './app.css';
+    import {
+        token,
+        currentUser,
+        isLoading,
+        clearToken,
+        saveToken,
+        allUsers,
+        balances,
+        expenses,
+        groups,
+    } from "./lib/stores.js";
+    import {
+        login,
+        listUsers,
+        listExpensesForUser,
+        getUserBalances,
+        listGroups,
+        isError,
+    } from "./lib/api.js";
+    import Login from "./components/Login.svelte";
+    import Register from "./components/Register.svelte";
+    import Dashboard from "./components/Dashboard.svelte";
+    import GroupsPage from "./components/Groups.svelte";
+    import LoadingOverlay from "./components/LoadingOverlay.svelte";
+    import Header from "./components/Header.svelte";
+    import "./app.css";
 
     // Navigation state
-    let currentPage = 'auth';
+    let currentPage = "login";
 
     // Get store values
     let tokenValue;
-    token.subscribe(t => tokenValue = t);
+    token.subscribe((t) => (tokenValue = t));
 
     let userValue;
-    currentUser.subscribe(u => {
+    currentUser.subscribe((u) => {
         userValue = u;
         // When user changes, update page
         if (u) {
-            currentPage = 'dashboard';
+            currentPage = "dashboard";
             loadDashboardData();
         } else if (!u && tokenValue) {
             // Token but no user - clear token
             clearToken();
-            currentPage = 'auth';
+            currentPage = "login";
         }
     });
 
@@ -34,7 +52,7 @@
         if (result.token && result.user) {
             saveToken(result.token);
             currentUser.set(result.user);
-            currentPage = 'dashboard';
+            currentPage = "dashboard";
             await loadDashboardData();
         }
     }
@@ -47,7 +65,7 @@
         balances.set([]);
         expenses.set([]);
         groups.set([]);
-        currentPage = 'auth';
+        currentPage = "login";
     }
 
     // Load dashboard data
@@ -62,7 +80,7 @@
             const usersResult = await listUsers(t);
             if (!isError(usersResult)) {
                 const usersMap = new Map();
-                usersResult.forEach(item => {
+                usersResult.forEach((item) => {
                     usersMap.set(item.user.id, item.user.username);
                 });
                 allUsers.set(usersMap);
@@ -77,7 +95,11 @@
             // Load expenses
             const expensesResult = await listExpensesForUser(u.id, t);
             if (!isError(expensesResult)) {
-                expenses.set(expensesResult.sort((a, b) => b.timestamp_ms - a.timestamp_ms));
+                expenses.set(
+                    expensesResult.sort(
+                        (a, b) => b.timestamp_ms - a.timestamp_ms,
+                    ),
+                );
             }
 
             // Load groups
@@ -86,7 +108,7 @@
                 groups.set(groupsResult);
             }
         } catch (e) {
-            console.error('Failed to load dashboard data:', e);
+            console.error("Failed to load dashboard data:", e);
         } finally {
             isLoading.set(false);
         }
@@ -106,12 +128,14 @@
     <Header user={userValue} onLogout={handleLogout} />
 
     <main class="main-content">
-        {#if currentPage === 'auth'}
-            <Auth onLogin={onLoginSuccess} />
-        {:else if currentPage === 'dashboard'}
+        {#if currentPage === "login"}
+            <Login onLogin={onLoginSuccess} onNavigate={navigateTo} />
+        {:else if currentPage === "register"}
+            <Register onLogin={onLoginSuccess} onNavigate={navigateTo} />
+        {:else if currentPage === "dashboard"}
             <Dashboard onLogout={handleLogout} />
-        {:else if currentPage === 'groups'}
-            <GroupsPage navigateTo={navigateTo} />
+        {:else if currentPage === "groups"}
+            <GroupsPage {navigateTo} />
         {/if}
     </main>
 
