@@ -9,6 +9,7 @@
         balances,
         expenses,
         groups,
+        theme,
     } from "./lib/stores.js";
     import {
         login,
@@ -25,6 +26,13 @@
     import LoadingOverlay from "./components/LoadingOverlay.svelte";
     import Header from "./components/Header.svelte";
     import "./app.css";
+
+    // Apply theme to document body
+    $: {
+        if (typeof document !== "undefined") {
+            document.body.setAttribute("data-theme", $theme);
+        }
+    }
 
     // Navigation state
     let currentPage = "login";

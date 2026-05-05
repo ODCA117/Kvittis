@@ -3,6 +3,33 @@ import { writable, derived } from "svelte/store";
 // Token store - persisted in localStorage
 export const token = writable(null);
 
+// Theme store - persisted in localStorage
+export const theme = writable("light");
+
+// Load theme from localStorage
+export function loadInitialTheme() {
+  const stored = localStorage.getItem("kvittis_theme");
+  if (stored === "dark" || stored === "light") {
+    theme.set(stored);
+  }
+  return stored;
+}
+
+// Set theme and save to localStorage
+export function setTheme(newTheme) {
+  theme.set(newTheme);
+  localStorage.setItem("kvittis_theme", newTheme);
+}
+
+// Toggle theme
+export function toggleTheme() {
+  theme.update((current) => {
+    const next = current === "light" ? "dark" : "light";
+    localStorage.setItem("kvittis_theme", next);
+    return next;
+  });
+}
+
 // Load token from localStorage - call this on app init
 function loadInitialToken() {
   const stored = localStorage.getItem("kvittis_token");
@@ -59,3 +86,4 @@ export function getUsername(id, currentUserVal, allUsersMap) {
 
 // Initialize - call this once on app start
 loadInitialToken();
+loadInitialTheme();
