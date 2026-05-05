@@ -267,7 +267,7 @@ impl Store for SqliteStore {
 
     // Should be able to update username, email, password_hash, updated_at is automatic.
     // created_at does not update ever, deleted_at should not update unless deleted.
-    async fn update_user(&self, mut user: UserRow) -> Result<UserRow> {
+    async fn _update_user(&self, mut user: UserRow) -> Result<UserRow> {
         // TODO: Check the timezone stuff...
         user.updated_at =
             chrono::Utc::now().with_timezone(&chrono::FixedOffset::east_opt(0).unwrap());

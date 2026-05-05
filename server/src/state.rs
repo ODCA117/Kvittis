@@ -186,7 +186,7 @@ impl AppState {
     // FIXME: This should require some form of confirmation/authentication
     pub async fn _edit_user(&self, updated_user: User) -> Result<User> {
         let guard = self.data.write().await;
-        let stored = guard.store.update_user(updated_user.into()).await?;
+        let stored = guard.store._update_user(updated_user.into()).await?;
         Ok(stored.into())
     }
 

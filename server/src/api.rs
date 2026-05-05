@@ -113,13 +113,18 @@ pub async fn unauthorized_user_handler(
     State(state): State<AppState>,
     Json(payload): Json<UnauthorizedUserRequest>,
 ) -> (StatusCode, Json<ApiResponse<serde_json::Value>>) {
-    //FIXME: This will show passwords in logs...
-    debug!("Unauthenticated request: Payload: {:?}", payload);
     match payload {
         UnauthorizedUserRequest::Register { user } => {
-            debug!("Register user: {:?}", user);
+            debug!(
+                "Register user: Username: {:?}, Email: {:?}",
+                &user.username, &user.email
+            );
             match state.register_user(user).await {
                 Ok(u) => {
+                    info!(
+                        "Successfully registered user: username: {:?}, email: {:?}",
+                        &u.id, &u.email,
+                    );
                     let resp = RegisterResponse { user: u };
                     json_success(StatusCode::CREATED, serde_json::to_value(resp).unwrap())
                 }
@@ -128,9 +133,9 @@ pub async fn unauthorized_user_handler(
         }
 
         UnauthorizedUserRequest::Login { username, password } => {
-            debug!("Loging user: {:?}", username);
             match state.login_user(username, password).await {
                 Ok((user, token, token_type)) => {
+                    info!("User: {:?} successfully logged in", user.id);
                     let resp = LoginResponse {
                         user,
                         token,
@@ -147,13 +152,9 @@ pub async fn unauthorized_user_handler(
 #[axum::debug_handler]
 pub async fn authorized_user_handler(
     State(state): State<AppState>,
-    claims: Claims,
+    _claims: Claims,
     Json(payload): Json<AuthorizedUserRequest>,
 ) -> (StatusCode, Json<ApiResponse<serde_json::Value>>) {
-    debug!(
-        "Authenticated request: Payload: {:?}, Claims: {:?}",
-        payload, claims
-    );
     match payload {
         AuthorizedUserRequest::Logout => {
             warn!("Do not really know how to make this work yet");
@@ -161,7 +162,7 @@ pub async fn authorized_user_handler(
         }
 
         AuthorizedUserRequest::Get { user_id } => {
-            debug!("Get user: {:?}", user_id);
+            info!("Get user: {:?}", user_id);
             match state.get_user(user_id).await {
                 Ok(u) => {
                     let resp: GetUserResponse = u.into();
@@ -172,7 +173,7 @@ pub async fn authorized_user_handler(
         }
 
         AuthorizedUserRequest::Delete { user_id } => {
-            debug!("Delete user: {:?}", user_id);
+            info!("Delete user: {:?}", user_id);
             match state.delete_user(user_id).await {
                 Ok(_) => json_success(
                     StatusCode::OK,
@@ -183,7 +184,7 @@ pub async fn authorized_user_handler(
         }
 
         AuthorizedUserRequest::List => {
-            debug!("List users");
+            info!("List users");
             match state.get_users().await {
                 Ok(users) => {
                     let resp: Vec<GetUserResponse> = users.into_iter().map(|u| u.into()).collect();

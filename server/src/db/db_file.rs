@@ -119,7 +119,7 @@ impl Store for FileStore {
         Ok(())
     }
 
-    async fn update_user(&self, user: UserRow) -> Result<UserRow> {
+    async fn _update_user(&self, user: UserRow) -> Result<UserRow> {
         let mut state = self.state.write().await;
         state.users.insert(user.id, user.clone());
         drop(state);
