@@ -188,13 +188,15 @@ pub async fn authorized_user_handler(
         AuthorizedUserRequest::List => {
             // NOTE: Implement this for admins/privilege users
             info!("List users");
-            match state.get_users().await {
-                Ok(users) => {
-                    let resp: Vec<GetUserResponse> = users.into_iter().map(|u| u.into()).collect();
-                    json_success(StatusCode::OK, serde_json::to_value(resp).unwrap())
-                }
-                Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to get users"),
-            }
+            json_error(StatusCode::FORBIDDEN, "Not allowed to get users")
+            // NOTE: Note implemented, Dangerous to be able to get all users in the field.
+            // match state.get_users().await {
+            //     Ok(users) => {
+            //         let resp: Vec<GetUserResponse> = users.into_iter().map(|u| u.into()).collect();
+            //         json_success(StatusCode::OK, serde_json::to_value(resp).unwrap())
+            //     }
+            //     Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to get users"),
+            // }
         }
 
         AuthorizedUserRequest::Search { query } => {

@@ -149,7 +149,7 @@ impl AppState {
         }
     }
 
-    pub async fn get_users(&self) -> Result<Vec<User>> {
+    pub async fn _get_users(&self) -> Result<Vec<User>> {
         let guard = self.data.read().await;
         Ok(guard
             .store

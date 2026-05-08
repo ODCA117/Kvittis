@@ -70,11 +70,15 @@ async fn test_get_users() -> anyhow::Result<()> {
         .login_user(user1.username, PASSWORD.to_owned())
         .await?;
 
-    let users = auth_client.get_users().await?;
-    let usernames: Vec<String> = users.iter().map(|u| u.user.username.clone()).collect();
-    assert!(usernames.contains(&new_user1.username.to_string()));
-    assert!(usernames.contains(&new_user2.username.to_string()));
+    // Should not be allowed to fetch users.
+    let resp = auth_client.get_users().await;
+    assert!(resp.is_err());
 
+    // let usernames: Vec<String> = users.iter().map(|u| u.user.username.clone()).collect();
+    // assert!(usernames.contains(&new_user1.username.to_string()));
+    // assert!(usernames.contains(&new_user2.username.to_string()));
+
+    // Need to delete users afterwards.
     auth_client.delete_user(user1.id).await?;
     auth_client.delete_user(user2.id).await?;
 
