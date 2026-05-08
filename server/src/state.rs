@@ -10,6 +10,7 @@ use axum_extra::TypedHeader;
 use axum_extra::headers::Authorization;
 use axum_extra::headers::authorization::Bearer;
 use chrono::{DateTime, FixedOffset, TimeDelta, Utc};
+use common::PublicUser;
 use jsonwebtoken::TokenData;
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use tokio::sync::RwLock;
@@ -160,11 +161,11 @@ impl AppState {
             .collect())
     }
 
-    pub async fn search_users(&self, query: &str) -> Result<Vec<User>> {
+    pub async fn search_users(&self, query: &str) -> Result<Vec<PublicUser>> {
         let guard = self.data.read().await;
         // NOTE: This is could be optimized later.
         let users = guard.store.list_users().await?;
-        let users: Vec<User> = users
+        let users: Vec<PublicUser> = users
             .into_iter()
             .filter(|u| u.username.contains(query))
             .map(|u| u.into())
@@ -473,6 +474,15 @@ impl From<UserRow> for User {
             email: user.email,
             created_at: user.created_at,
             updated_at: user.updated_at,
+        }
+    }
+}
+
+impl From<UserRow> for PublicUser {
+    fn from(user: UserRow) -> Self {
+        PublicUser {
+            id: user.id,
+            username: user.username,
         }
     }
 }

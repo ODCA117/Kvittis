@@ -99,8 +99,9 @@ async fn test_search_users() -> anyhow::Result<()> {
     let search_results = auth_client.search_users("search_users_test").await?;
     dbg!(&search_results);
     let usernames: Vec<String> = search_results
+        .user
         .iter()
-        .map(|u| u.user.username.clone())
+        .map(|u| u.username.clone())
         .collect();
     assert!(usernames.contains(&new_user1.username.to_string()));
     assert!(usernames.contains(&new_user2.username.to_string()));
@@ -108,8 +109,9 @@ async fn test_search_users() -> anyhow::Result<()> {
     let search_results = auth_client.search_users("user1").await?;
     dbg!(&search_results);
     let usernames: Vec<String> = search_results
+        .user
         .iter()
-        .map(|u| u.user.username.clone())
+        .map(|u| u.username.clone())
         .collect();
     assert!(usernames.contains(&new_user1.username.to_string()));
     assert!(!usernames.contains(&new_user2.username.to_string()));

@@ -1,6 +1,5 @@
 use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize, Serialize};
-// use chrono::{DateTime, FixedOffset};
 use uuid::Uuid;
 pub mod api;
 
@@ -23,6 +22,12 @@ pub struct NewUser {
     pub username: String,
     pub email: String,
     pub password: String,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PublicUser {
+    pub id: UserId,
+    pub username: String,
 }
 
 #[derive(Clone, Debug)]

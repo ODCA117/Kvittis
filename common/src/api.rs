@@ -1,4 +1,4 @@
-use crate::{Expense, ExpenseId, Group, GroupId, NewUser, User, UserId};
+use crate::{Expense, ExpenseId, Group, GroupId, NewUser, PublicUser, User, UserId};
 use serde::{Deserialize, Serialize};
 
 // ── Response types ────────────────────────────────────────────────────────────
@@ -18,6 +18,11 @@ pub struct LoginResponse {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct GetUserResponse {
     pub user: User,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct SearchUserResponse {
+    pub user: Vec<PublicUser>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]

@@ -3,7 +3,8 @@ use common::{
     api::{
         ApiResponse, AuthorizedUserRequest, BalanceEntry, BalanceRequest, CreateExpenseResponse,
         CreateGroupResponse, ExpenseRequest, GetExpenseResponse, GetGroupResponse, GetUserResponse,
-        GroupBalance, GroupRequest, LoginResponse, RegisterResponse, UnauthorizedUserRequest,
+        GroupBalance, GroupRequest, LoginResponse, RegisterResponse, SearchUserResponse,
+        UnauthorizedUserRequest,
     },
     ExpenseId, GroupId, NewUser, UserId,
 };
@@ -151,7 +152,7 @@ impl AuthenticatedKvittisClient {
         }
     }
 
-    pub async fn search_users(&self, query: &str) -> Result<Vec<GetUserResponse>> {
+    pub async fn search_users(&self, query: &str) -> Result<SearchUserResponse> {
         let req = AuthorizedUserRequest::Search {
             query: query.to_owned(),
         };
@@ -163,7 +164,7 @@ impl AuthenticatedKvittisClient {
             .send()
             .await?;
         dbg!(&resp);
-        let resp = resp.json::<ApiResponse<Vec<GetUserResponse>>>().await?;
+        let resp = resp.json::<ApiResponse<SearchUserResponse>>().await?;
         match resp {
             ApiResponse::Success(r) => Ok(r),
             ApiResponse::Error { message } => Err(anyhow::anyhow!(message)),

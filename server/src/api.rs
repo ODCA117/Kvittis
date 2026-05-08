@@ -7,7 +7,7 @@ use axum::{
 use common::api::{
     ApiResponse, AuthorizedUserRequest, BalanceRequest, CreateExpenseResponse, CreateGroupResponse,
     ExpenseRequest, GetExpenseResponse, GetGroupResponse, GetUserResponse, GroupRequest,
-    LoginResponse, RegisterResponse, UnauthorizedUserRequest,
+    LoginResponse, RegisterResponse, SearchUserResponse, UnauthorizedUserRequest,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -204,7 +204,7 @@ pub async fn authorized_user_handler(
             debug!("Search users: {:?}", query);
             match state.search_users(&query).await {
                 Ok(users) => {
-                    let resp: Vec<GetUserResponse> = users.into_iter().map(|u| u.into()).collect();
+                    let resp = SearchUserResponse { user: users };
                     json_success(StatusCode::OK, serde_json::to_value(resp).unwrap())
                 }
                 Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to search users"),
