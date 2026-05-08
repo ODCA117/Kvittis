@@ -164,6 +164,7 @@ pub async fn authorized_user_handler(
         AuthorizedUserRequest::Get { user_id } => {
             info!("Get user: {:?}", user_id);
             match state.get_user(user_id).await {
+            // NOTE: Only get information if logged in user (or admin)
                 Ok(u) => {
                     let resp: GetUserResponse = u.into();
                     json_success(StatusCode::OK, serde_json::to_value(resp).unwrap())
@@ -173,6 +174,7 @@ pub async fn authorized_user_handler(
         }
 
         AuthorizedUserRequest::Delete { user_id } => {
+            // NOTE: Only delete if logged in user (or admin)
             info!("Delete user: {:?}", user_id);
             match state.delete_user(user_id).await {
                 Ok(_) => json_success(
@@ -184,6 +186,7 @@ pub async fn authorized_user_handler(
         }
 
         AuthorizedUserRequest::List => {
+            // NOTE: Implement this for admins/privilege users
             info!("List users");
             match state.get_users().await {
                 Ok(users) => {
@@ -195,6 +198,7 @@ pub async fn authorized_user_handler(
         }
 
         AuthorizedUserRequest::Search { query } => {
+            // NOTE: Search for all users, only return username and UserId
             debug!("Search users: {:?}", query);
             match state.search_users(&query).await {
                 Ok(users) => {
@@ -206,6 +210,7 @@ pub async fn authorized_user_handler(
         }
 
         AuthorizedUserRequest::AddFriend { user_id, friend_id } => {
+            // NOTE: Send friend request, need to be accepted
             debug!("Add friend: user={:?} friend={:?}", user_id, friend_id);
             match state.add_friend(user_id, friend_id).await {
                 Ok(_) => json_success(
@@ -220,6 +225,7 @@ pub async fn authorized_user_handler(
 
 // ── Group handler ─────────────────────────────────────────────────────────────
 
+// NOTE: Need to be authorized user
 pub async fn group_handler(
     State(state): State<AppState>,
     Json(payload): Json<GroupRequest>,
@@ -249,6 +255,7 @@ pub async fn group_handler(
         }
 
         GroupRequest::Get { group_id } => {
+            // NOTE: Only get groups user is member of
             debug!("Get group: {:?}", group_id);
             match state.get_group(group_id).await {
                 Ok(Some(g)) => {
@@ -266,6 +273,7 @@ pub async fn group_handler(
         }
 
         GroupRequest::Delete { group_id } => {
+            // NOTE: Only delete groups user is member of
             debug!("Delete group: {:?}", group_id);
             match state.delete_group(group_id).await {
                 Ok(_) => json_success(
@@ -277,6 +285,7 @@ pub async fn group_handler(
         }
 
         GroupRequest::Search { query } => {
+            // NOTE: Remove
             debug!("Search groups: {:?}", query);
             match state.search_groups(&query).await {
                 Ok(groups) => {
@@ -299,6 +308,7 @@ pub async fn group_handler(
             group_id,
             new_member,
         } => {
+            // NOTE: Only add if admin of group
             debug!(
                 "Add group member: group={:?} member={:?}",
                 group_id, new_member
