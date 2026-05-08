@@ -29,7 +29,7 @@ async fn test_register_user() -> anyhow::Result<()> {
         .login_user(user.username, PASSWORD.to_owned())
         .await?;
     dbg!(&auth_client);
-    let resp = auth_client.get_user(user.id).await?.user;
+    let resp = auth_client.get_user().await?.user;
     assert_eq!(resp.username, new_user.username);
 
     // Cleanup - use unauth client for delete_user
@@ -46,12 +46,12 @@ async fn test_delete_user() -> anyhow::Result<()> {
         .login_user(user.username, PASSWORD.to_owned())
         .await?;
 
-    let resp = auth_client.get_user(user.id).await?.user;
+    let resp = auth_client.get_user().await?.user;
     assert_eq!(resp.username, "test_delete_user");
 
     // Cleanup
     auth_client.delete_user(user.id).await?;
-    match auth_client.get_user(user.id).await {
+    match auth_client.get_user().await {
         Ok(_) => Err(anyhow!("User should have been deleted")),
         Err(_) => Ok(()),
     }

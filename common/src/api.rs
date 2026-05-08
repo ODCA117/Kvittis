@@ -102,7 +102,7 @@ pub enum UnauthorizedUserRequest {
 #[derive(Serialize, Deserialize, Debug, Clone)]
 #[serde(tag = "action", rename_all = "snake_case")]
 pub enum AuthorizedUserRequest {
-    Get { user_id: UserId },
+    Get,
     Delete { user_id: UserId },
     List,
     Search { query: String },

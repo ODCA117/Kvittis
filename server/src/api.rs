@@ -152,7 +152,7 @@ pub async fn unauthorized_user_handler(
 #[axum::debug_handler]
 pub async fn authorized_user_handler(
     State(state): State<AppState>,
-    _claims: Claims,
+    claims: Claims,
     Json(payload): Json<AuthorizedUserRequest>,
 ) -> (StatusCode, Json<ApiResponse<serde_json::Value>>) {
     match payload {
@@ -161,10 +161,10 @@ pub async fn authorized_user_handler(
             json_not_implemented()
         }
 
-        AuthorizedUserRequest::Get { user_id } => {
-            info!("Get user: {:?}", user_id);
-            match state.get_user(user_id).await {
+        AuthorizedUserRequest::Get => {
             // NOTE: Only get information if logged in user (or admin)
+            info!("Get user: {:?}", claims.sub);
+            match state.get_user(claims.sub).await {
                 Ok(u) => {
                     let resp: GetUserResponse = u.into();
                     json_success(StatusCode::OK, serde_json::to_value(resp).unwrap())

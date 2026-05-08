@@ -115,8 +115,8 @@ impl AuthenticatedKvittisClient {
         }
     }
 
-    pub async fn get_user(&self, user_id: UserId) -> Result<GetUserResponse> {
-        let req = AuthorizedUserRequest::Get { user_id };
+    pub async fn get_user(&self) -> Result<GetUserResponse> {
+        let req = AuthorizedUserRequest::Get;
 
         let send_req = self
             .http
