@@ -27,29 +27,31 @@ async fn tc1_list_for_user_includes_payer_and_participant() -> anyhow::Result<()
     let a = client.register_user(tc1_user_1).await?.user;
     let b = client.register_user(tc1_user_2).await?.user;
     let c = client.register_user(tc1_user_3).await?.user;
-    let auth_client = client.login_user(a.username, PASSWORD.to_owned()).await?;
+    let auth_a = client.login_user(a.username, PASSWORD.to_owned()).await?;
 
     // E1: payer A, participants [A, B], no group
-    let e1 = auth_client
+    let e1 = auth_a
         .create_expense(a.id, vec![a.id, b.id], 100, None, None)
         .await?;
     // E2: payer C, participants [A, C], no group
-    let e2 = auth_client
+    let e2 = auth_a
         .create_expense(c.id, vec![a.id, c.id], 200, None, None)
         .await?;
 
     // ListForUser(A) must contain both E1 and E2
-    let expenses = auth_client.list_expenses_for_user(a.id).await?;
+    let expenses = auth_a.list_expenses_for_user(a.id).await?;
     let ids: Vec<_> = expenses.iter().map(|e| e.id).collect();
     assert!(ids.contains(&e1.id), "E1 should appear (A is payer)");
     assert!(ids.contains(&e2.id), "E2 should appear (A is participant)");
 
     // Cleanup
-    auth_client.delete_expense(e1.id).await?;
-    auth_client.delete_expense(e2.id).await?;
-    auth_client.delete_user(a.id).await?;
-    auth_client.delete_user(b.id).await?;
-    auth_client.delete_user(c.id).await?;
+    auth_a.delete_expense(e1.id).await?;
+    auth_a.delete_expense(e2.id).await?;
+    auth_a.delete_user().await?;
+    let auth_b = client.login_user(b.username, PASSWORD.to_owned()).await?;
+    auth_b.delete_user().await?;
+    let auth_c = client.login_user(c.username, PASSWORD.to_owned()).await?;
+    auth_c.delete_user().await?;
     Ok(())
 }
 
@@ -64,15 +66,15 @@ async fn tc2_user_balances_basic_split() -> anyhow::Result<()> {
 
     let a = client.register_user(tc2_user_1).await?.user;
     let b = client.register_user(tc2_user_2).await?.user;
-    let auth_client = client.login_user(a.username, PASSWORD.to_owned()).await?;
+    let auth_a = client.login_user(a.username, PASSWORD.to_owned()).await?;
 
     // E1: payer A, participants [A, B], amount 100 → B owes A 50
-    let e1 = auth_client
+    let e1 = auth_a
         .create_expense(a.id, vec![a.id, b.id], 100, None, None)
         .await?;
 
     // UserBalances(A): entry for B with amount +50
-    let balances_a = auth_client.get_user_balances(a.id).await?;
+    let balances_a = auth_a.get_user_balances(a.id).await?;
     let entry_a = balances_a
         .iter()
         .find(|e| e.other == b.id)
@@ -80,7 +82,7 @@ async fn tc2_user_balances_basic_split() -> anyhow::Result<()> {
     assert_eq!(entry_a.amount, 50, "B owes A 50");
 
     // UserBalances(B): entry for A with amount -50
-    let balances_b = auth_client.get_user_balances(b.id).await?;
+    let balances_b = auth_a.get_user_balances(b.id).await?;
     let entry_b = balances_b
         .iter()
         .find(|e| e.other == a.id)
@@ -88,9 +90,10 @@ async fn tc2_user_balances_basic_split() -> anyhow::Result<()> {
     assert_eq!(entry_b.amount, -50, "B owes A 50");
 
     // Cleanup
-    auth_client.delete_expense(e1.id).await?;
-    auth_client.delete_user(a.id).await?;
-    auth_client.delete_user(b.id).await?;
+    auth_a.delete_expense(e1.id).await?;
+    auth_a.delete_user().await?;
+    let auth_b = client.login_user(b.username, PASSWORD.to_owned()).await?;
+    auth_b.delete_user().await?;
     Ok(())
 }
 
@@ -105,22 +108,22 @@ async fn tc3_user_balances_ignore_group_expenses() -> anyhow::Result<()> {
 
     let a = client.register_user(tc3_user_1).await?.user;
     let b = client.register_user(tc3_user_2).await?.user;
-    let auth_client = client.login_user(a.username, PASSWORD.to_owned()).await?;
-    let g = auth_client
+    let auth_a = client.login_user(a.username, PASSWORD.to_owned()).await?;
+    let g = auth_a
         .create_group("tc3_group_g", a.id, vec![a.id, b.id])
         .await?;
 
     // E1: non-group expense, payer A, participants [A, B], amount 100
-    let e1 = auth_client
+    let e1 = auth_a
         .create_expense(a.id, vec![a.id, b.id], 100, None, None)
         .await?;
     // E2: group expense, same split — should NOT affect UserBalances
-    let e2 = auth_client
+    let e2 = auth_a
         .create_expense(a.id, vec![a.id, b.id], 100, None, Some(g.id))
         .await?;
 
     // UserBalances(A) vs B should only reflect E1 → net +50
-    let balances = auth_client.get_user_balances(a.id).await?;
+    let balances = auth_a.get_user_balances(a.id).await?;
     let entry = balances
         .iter()
         .find(|e| e.other == b.id)
@@ -131,11 +134,12 @@ async fn tc3_user_balances_ignore_group_expenses() -> anyhow::Result<()> {
     );
 
     // Cleanup
-    auth_client.delete_expense(e1.id).await?;
-    auth_client.delete_expense(e2.id).await?;
-    auth_client.delete_group(g.id).await?;
-    auth_client.delete_user(a.id).await?;
-    auth_client.delete_user(b.id).await?;
+    auth_a.delete_expense(e1.id).await?;
+    auth_a.delete_expense(e2.id).await?;
+    auth_a.delete_group(g.id).await?;
+    auth_a.delete_user().await?;
+    let auth_b = client.login_user(b.username, PASSWORD.to_owned()).await?;
+    auth_b.delete_user().await?;
     Ok(())
 }
 
@@ -153,23 +157,23 @@ async fn tc4_group_overview_includes_all_expenses() -> anyhow::Result<()> {
     let a = client.register_user(tc4_user_1).await?.user;
     let b = client.register_user(tc4_user_2).await?.user;
     let c = client.register_user(tc4_user_3).await?.user;
-    let auth_client = client.login_user(a.username, PASSWORD.to_owned()).await?;
-    let g = auth_client
+    let auth_a = client.login_user(a.username, PASSWORD.to_owned()).await?;
+    let g = auth_a
         .create_group("tc4_group_g", a.id, vec![a.id, b.id, c.id])
         .await?;
 
     // E1: payer A, participants [A, B], amount 300 → A net +150, B net -150
-    let e1 = auth_client
+    let e1 = auth_a
         .create_expense(a.id, vec![a.id, b.id], 300, None, Some(g.id))
         .await?;
     // E2: payer B, participants [B, C], amount 300 → B net +150, C net -150
     // Combined: A=+150, B=0, C=-150
-    let e2 = auth_client
+    let e2 = auth_a
         .create_expense(b.id, vec![b.id, c.id], 300, None, Some(g.id))
         .await?;
 
     // GroupBalance should contain a transfer: C -> A of 150
-    let transfers = auth_client.get_group_balances(g.id).await?;
+    let transfers = auth_a.get_group_balances(g.id).await?;
     assert_eq!(
         transfers.len(),
         1,
@@ -181,12 +185,14 @@ async fn tc4_group_overview_includes_all_expenses() -> anyhow::Result<()> {
     assert_eq!(t.amount, 150, "C pays A 150");
 
     // Cleanup
-    auth_client.delete_expense(e1.id).await?;
-    auth_client.delete_expense(e2.id).await?;
-    auth_client.delete_group(g.id).await?;
-    auth_client.delete_user(a.id).await?;
-    auth_client.delete_user(b.id).await?;
-    auth_client.delete_user(c.id).await?;
+    auth_a.delete_expense(e1.id).await?;
+    auth_a.delete_expense(e2.id).await?;
+    auth_a.delete_group(g.id).await?;
+    auth_a.delete_user().await?;
+    let auth_b = client.login_user(b.username, PASSWORD.to_owned()).await?;
+    auth_b.delete_user().await?;
+    let auth_c = client.login_user(c.username, PASSWORD.to_owned()).await?;
+    auth_c.delete_user().await?;
     Ok(())
 }
 
@@ -203,17 +209,17 @@ async fn tc5_deterministic_remainder_split() -> anyhow::Result<()> {
     let a = client.register_user(tc5_user_1).await?.user;
     let b = client.register_user(tc5_user_2).await?.user;
     let c = client.register_user(tc5_user_3).await?.user;
-    let auth_client = client.login_user(a.username, PASSWORD.to_owned()).await?;
+    let auth_a = client.login_user(a.username, PASSWORD.to_owned()).await?;
 
     // amount=100, 3 participants → base=33, rem=1
     // Sorted by UserId, first participant gets 34, others get 33. Sum = 34+33+33 = 100.
-    let e1 = auth_client
+    let e1 = auth_a
         .create_expense(a.id, vec![a.id, b.id, c.id], 100, None, None)
         .await?;
 
     // Fetch balances twice and verify they are identical (deterministic)
-    let balances_first = auth_client.get_user_balances(a.id).await?;
-    let balances_second = auth_client.get_user_balances(a.id).await?;
+    let balances_first = auth_a.get_user_balances(a.id).await?;
+    let balances_second = auth_a.get_user_balances(a.id).await?;
 
     // Shares for each non-payer must be 33 or 34 (sum to 100 - payer's own share)
     // A paid 100 and gets back shares from B and C; total B+C owe A = 66 or 67.
@@ -233,9 +239,11 @@ async fn tc5_deterministic_remainder_split() -> anyhow::Result<()> {
     );
 
     // Cleanup
-    auth_client.delete_expense(e1.id).await?;
-    auth_client.delete_user(a.id).await?;
-    auth_client.delete_user(b.id).await?;
-    auth_client.delete_user(c.id).await?;
+    auth_a.delete_expense(e1.id).await?;
+    auth_a.delete_user().await?;
+    let auth_b = client.login_user(b.username, PASSWORD.to_owned()).await?;
+    auth_b.delete_user().await?;
+    let auth_c = client.login_user(c.username, PASSWORD.to_owned()).await?;
+    auth_c.delete_user().await?;
     Ok(())
 }

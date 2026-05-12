@@ -173,10 +173,10 @@ pub async fn authorized_user_handler(
             }
         }
 
-        AuthorizedUserRequest::Delete { user_id } => {
+        AuthorizedUserRequest::Delete => {
             // NOTE: Only delete if logged in user (or admin)
-            info!("Delete user: {:?}", user_id);
-            match state.delete_user(user_id).await {
+            info!("Delete user: {:?}", claims.sub);
+            match state.delete_user(claims.sub).await {
                 Ok(_) => json_success(
                     StatusCode::OK,
                     serde_json::json!({"status": "User deleted"}),

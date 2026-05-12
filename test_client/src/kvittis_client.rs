@@ -100,8 +100,8 @@ impl AuthenticatedKvittisClient {
 
     // ========== User Methods ==========
 
-    pub async fn delete_user(&self, user_id: UserId) -> Result<()> {
-        let req = AuthorizedUserRequest::Delete { user_id };
+    pub async fn delete_user(self) -> Result<()> {
+        let req = AuthorizedUserRequest::Delete;
         let resp = self
             .http
             .post(self.url.join(AUTH_USER_ENDPOINT)?)

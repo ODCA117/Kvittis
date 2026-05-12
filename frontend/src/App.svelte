@@ -88,8 +88,8 @@
             const usersResult = await listUsers(t);
             if (!isError(usersResult)) {
                 const usersMap = new Map();
-                usersResult.forEach((item) => {
-                    usersMap.set(item.user.id, item.user.username);
+                usersResult.user.forEach((user) => {
+                    usersMap.set(user.id, user.username);
                 });
                 allUsers.set(usersMap);
             }

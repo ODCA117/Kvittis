@@ -108,7 +108,7 @@ pub enum UnauthorizedUserRequest {
 #[serde(tag = "action", rename_all = "snake_case")]
 pub enum AuthorizedUserRequest {
     Get,
-    Delete { user_id: UserId },
+    Delete,
     List,
     Search { query: String },
     AddFriend { user_id: UserId, friend_id: UserId },
