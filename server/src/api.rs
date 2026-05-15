@@ -211,17 +211,18 @@ pub async fn authorized_user_handler(
             }
         }
 
-        AuthorizedUserRequest::AddFriend { user_id, friend_id } => {
-            // NOTE: Send friend request, need to be accepted
-            debug!("Add friend: user={:?} friend={:?}", user_id, friend_id);
-            match state.add_friend(user_id, friend_id).await {
-                Ok(_) => json_success(
-                    StatusCode::OK,
-                    serde_json::json!({"status": "friend added"}),
-                ),
-                Err(_) => json_error(StatusCode::BAD_REQUEST, "user_id or friend_id not found"),
-            }
+        AuthorizedUserRequest::SendFriendRequest { friend_id: _ } => {
+            json_error(StatusCode::NOT_IMPLEMENTED, "Not Implemented")
         }
+
+        AuthorizedUserRequest::GetPendingFriendRequests => {
+            json_error(StatusCode::NOT_IMPLEMENTED, "Not Implemented")
+        }
+
+        AuthorizedUserRequest::HandleFriendRequest {
+            request_id: _,
+            request_action: _,
+        } => json_error(StatusCode::NOT_IMPLEMENTED, "Not Implemented"),
     }
 }
 

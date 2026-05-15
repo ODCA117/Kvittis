@@ -2,11 +2,12 @@ use anyhow::Result;
 use common::{
     api::{
         ApiResponse, AuthorizedUserRequest, BalanceEntry, BalanceRequest, CreateExpenseResponse,
-        CreateGroupResponse, ExpenseRequest, GetExpenseResponse, GetGroupResponse, GetUserResponse,
-        GroupBalance, GroupRequest, LoginResponse, RegisterResponse, SearchUserResponse,
+        CreateGroupResponse, ExpenseRequest, FriendRequestResponse, GetExpenseResponse,
+        GetGroupResponse, GetUserResponse, GroupBalance, GroupRequest, LoginResponse,
+        PendingFriendRequestResponse, RegisterResponse, SearchUserResponse,
         UnauthorizedUserRequest,
     },
-    ExpenseId, GroupId, NewUser, UserId,
+    ExpenseId, FriendRequestAction, FriendRequestId, GroupId, NewUser, UserId,
 };
 use reqwest::{Client as HttpClient, Url};
 
@@ -171,8 +172,8 @@ impl AuthenticatedKvittisClient {
         }
     }
 
-    pub async fn add_friend(&self, user_id: UserId, friend_id: UserId) -> Result<()> {
-        let req = AuthorizedUserRequest::AddFriend { user_id, friend_id };
+    pub async fn send_friend_request(&self, friend_id: UserId) -> Result<FriendRequestResponse> {
+        let req = AuthorizedUserRequest::SendFriendRequest { friend_id };
         let resp = self
             .http
             .post(self.url.join(AUTH_USER_ENDPOINT)?)
@@ -181,12 +182,55 @@ impl AuthenticatedKvittisClient {
             .send()
             .await?;
         dbg!(&resp);
-        match resp.status().is_success() {
-            true => Ok(()),
-            false => Err(anyhow::anyhow!("Failed to add friend")),
+        let resp = resp.json::<ApiResponse<FriendRequestResponse>>().await?;
+        match resp {
+            ApiResponse::Success(r) => Ok(r),
+            ApiResponse::Error { message } => Err(anyhow::anyhow!(message)),
         }
     }
 
+    pub async fn get_pending_friend_requests(&self) -> Result<PendingFriendRequestResponse> {
+        let req = AuthorizedUserRequest::GetPendingFriendRequests;
+        let resp = self
+            .http
+            .post(self.url.join(AUTH_USER_ENDPOINT)?)
+            .bearer_auth(&self.token)
+            .json(&req)
+            .send()
+            .await?;
+        dbg!(&resp);
+        let resp = resp
+            .json::<ApiResponse<PendingFriendRequestResponse>>()
+            .await?;
+        match resp {
+            ApiResponse::Success(r) => Ok(r),
+            ApiResponse::Error { message } => Err(anyhow::anyhow!(message)),
+        }
+    }
+
+    pub async fn handle_friend_request(
+        &self,
+        request_id: FriendRequestId,
+        action: FriendRequestAction,
+    ) -> Result<()> {
+        let req = AuthorizedUserRequest::HandleFriendRequest {
+            request_id,
+            request_action: action,
+        };
+        let resp = self
+            .http
+            .post(self.url.join(AUTH_USER_ENDPOINT)?)
+            .bearer_auth(&self.token)
+            .json(&req)
+            .send()
+            .await?;
+        dbg!(&resp);
+        let resp = resp.json::<ApiResponse<()>>().await?;
+        match resp {
+            ApiResponse::Success(r) => Ok(r),
+            ApiResponse::Error { message } => Err(anyhow::anyhow!(message)),
+        }
+    }
     // ========== Expense Methods ==========
 
     pub async fn create_expense(

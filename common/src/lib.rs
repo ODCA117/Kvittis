@@ -6,6 +6,7 @@ pub mod api;
 pub type UserId = Uuid;
 pub type GroupId = Uuid;
 pub type ExpenseId = Uuid;
+pub type FriendRequestId = Uuid;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct User {
@@ -28,6 +29,30 @@ pub struct NewUser {
 pub struct PublicUser {
     pub id: UserId,
     pub username: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct FriendRequest {
+    pub id: FriendRequestId,
+    pub from: UserId,
+    pub to: UserId,
+    pub status: FriendRequestState,
+    pub created_at: DateTime<FixedOffset>,
+    pub updated_at: DateTime<FixedOffset>,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum FriendRequestState {
+    Pending,
+    Rejected,
+    Accepted,
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub enum FriendRequestAction {
+    Accept,
+    Reject,
+    Cancel,
 }
 
 #[derive(Clone, Debug)]

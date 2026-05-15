@@ -1,4 +1,7 @@
-use crate::{Expense, ExpenseId, Group, GroupId, NewUser, PublicUser, User, UserId};
+use crate::{
+    Expense, ExpenseId, FriendRequest, FriendRequestAction, FriendRequestId, Group, GroupId,
+    NewUser, PublicUser, User, UserId,
+};
 use serde::{Deserialize, Serialize};
 
 // ── Response types ────────────────────────────────────────────────────────────
@@ -23,6 +26,17 @@ pub struct GetUserResponse {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct SearchUserResponse {
     pub user: Vec<PublicUser>,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct FriendRequestResponse {
+    pub request: FriendRequest,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct PendingFriendRequestResponse {
+    pub incoming: Vec<FriendRequest>,
+    pub outgoing: Vec<FriendRequest>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -62,7 +76,6 @@ pub struct GetExpenseResponse {
 }
 
 // ── Internal structs used by the state/db layer ───────────────────────────────
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CreateGroupRequest {
     pub name: String,
@@ -110,8 +123,17 @@ pub enum AuthorizedUserRequest {
     Get,
     Delete,
     List,
-    Search { query: String },
-    AddFriend { user_id: UserId, friend_id: UserId },
+    Search {
+        query: String,
+    },
+    SendFriendRequest {
+        friend_id: UserId,
+    },
+    HandleFriendRequest {
+        request_id: FriendRequestId,
+        request_action: FriendRequestAction,
+    },
+    GetPendingFriendRequests,
     Logout,
 }
 

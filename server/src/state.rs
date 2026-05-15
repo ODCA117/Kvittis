@@ -191,21 +191,6 @@ impl AppState {
         Ok(stored.into())
     }
 
-    // FIXME: Require confirmation on both parties.
-    pub async fn add_friend(&self, user_id: UserId, friend_id: UserId) -> Result<()> {
-        let guard = self.data.write().await;
-        // let Some(mut user) = guard.store.get_user(user_id).await? else {
-        //     return Err(anyhow!("User not found"));
-        // };
-        // let Some(mut friend) = guard.store.get_user(friend_id).await? else {
-        //     return Err(anyhow!("Friend not found"));
-        // };
-
-        guard.store.add_friend(user_id, friend_id).await?;
-
-        Ok(())
-    }
-
     pub async fn create_expense(&self, expense_req: CreateExpenseRequest) -> Result<Expense> {
         let guard = self.data.write().await;
         let expense = Expense {

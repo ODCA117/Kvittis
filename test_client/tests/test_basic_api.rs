@@ -1,6 +1,6 @@
 // These are more integration tests and scenario tests that are more complex.
 use anyhow::anyhow;
-use common::NewUser;
+use common::{FriendRequest, FriendRequestAction, NewUser};
 use rust_kvittis_client::UnauthClient;
 
 const BASE_URL: &str = "http://localhost:3000";
@@ -81,6 +81,129 @@ async fn test_get_users() -> anyhow::Result<()> {
     // Need to delete users afterwards.
     user1.delete_user().await?;
     user2.delete_user().await?;
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_send_friend_request() -> anyhow::Result<()> {
+    let client = UnauthClient::new(BASE_URL)?;
+    let new_user1 = create_new_user("send_friend_request_user1".to_owned());
+    let new_user2 = create_new_user("send_friend_request_user2".to_owned());
+    let user1 = client.register_user(new_user1.clone()).await?.user;
+    let user2 = client.register_user(new_user2.clone()).await?.user;
+
+    let auth_user1 = client
+        .login_user(user1.username, PASSWORD.to_owned())
+        .await?;
+    let auth_user2 = client
+        .login_user(user2.username, PASSWORD.to_owned())
+        .await?;
+
+    let friend_req = auth_user1.send_friend_request(user2.id).await?.request;
+
+    let user1_pending_reqs = auth_user1.get_pending_friend_requests().await?;
+    let user2_pending_reqs = auth_user2.get_pending_friend_requests().await?;
+    assert_eq!(user1_pending_reqs.outgoing.len(), 1);
+    assert_eq!(user2_pending_reqs.incoming.len(), 1);
+    assert_eq!(
+        user1_pending_reqs.outgoing[0].id,
+        user2_pending_reqs.incoming[0].id
+    );
+
+    auth_user1
+        .handle_friend_request(friend_req.id, FriendRequestAction::Cancel)
+        .await?;
+    auth_user1.delete_user().await?;
+    auth_user2.delete_user().await?;
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_cancel_friend_request() -> anyhow::Result<()> {
+    let client = UnauthClient::new(BASE_URL)?;
+    let new_user1 = create_new_user("send_friend_request_user1".to_owned());
+    let new_user2 = create_new_user("send_friend_request_user2".to_owned());
+    let user1 = client.register_user(new_user1.clone()).await?.user;
+    let user2 = client.register_user(new_user2.clone()).await?.user;
+
+    let auth_user1 = client
+        .login_user(user1.username, PASSWORD.to_owned())
+        .await?;
+    let auth_user2 = client
+        .login_user(user2.username, PASSWORD.to_owned())
+        .await?;
+
+    let friend_req = auth_user1.send_friend_request(user2.id).await?.request;
+
+    let user1_pending_reqs = auth_user1.get_pending_friend_requests().await?;
+    let user2_pending_reqs = auth_user2.get_pending_friend_requests().await?;
+    assert_eq!(user1_pending_reqs.outgoing.len(), 1);
+    assert_eq!(user2_pending_reqs.incoming.len(), 1);
+    assert_eq!(
+        user1_pending_reqs.outgoing[0].id,
+        user2_pending_reqs.incoming[0].id
+    );
+
+    auth_user1
+        .handle_friend_request(friend_req.id, FriendRequestAction::Cancel)
+        .await?;
+    let user1_pending_reqs = auth_user1.get_pending_friend_requests().await?;
+    let user2_pending_reqs = auth_user2.get_pending_friend_requests().await?;
+    assert_eq!(user1_pending_reqs.outgoing.len(), 0);
+    assert_eq!(user2_pending_reqs.incoming.len(), 0);
+
+    auth_user1.delete_user().await?;
+    auth_user2.delete_user().await?;
+
+    Ok(())
+}
+
+#[tokio::test]
+async fn test_accept_friend_request() -> anyhow::Result<()> {
+    let client = UnauthClient::new(BASE_URL)?;
+    let new_user1 = create_new_user("send_friend_request_user1".to_owned());
+    let new_user2 = create_new_user("send_friend_request_user2".to_owned());
+    let user1 = client.register_user(new_user1.clone()).await?.user;
+    let user2 = client.register_user(new_user2.clone()).await?.user;
+
+    let auth_user1 = client
+        .login_user(user1.username, PASSWORD.to_owned())
+        .await?;
+    let auth_user2 = client
+        .login_user(user2.username, PASSWORD.to_owned())
+        .await?;
+
+    let friend_req = auth_user1.send_friend_request(user2.id).await?.request;
+
+    let user1_pending_reqs = auth_user1.get_pending_friend_requests().await?;
+    let user2_pending_reqs = auth_user2.get_pending_friend_requests().await?;
+    assert_eq!(user1_pending_reqs.outgoing.len(), 1);
+    assert_eq!(user2_pending_reqs.incoming.len(), 1);
+    assert_eq!(
+        user1_pending_reqs.outgoing[0].id,
+        user2_pending_reqs.incoming[0].id
+    );
+
+    auth_user1
+        .handle_friend_request(friend_req.id, FriendRequestAction::Cancel)
+        .await?;
+
+    let user1_pending_reqs = auth_user1.get_pending_friend_requests().await?;
+    let user2_pending_reqs = auth_user2.get_pending_friend_requests().await?;
+    assert_eq!(user1_pending_reqs.outgoing.len(), 0);
+    assert_eq!(user2_pending_reqs.incoming.len(), 0);
+
+    let user1_friends = auth_user1.get_user().await?.user.friends;
+    let user2_friends = auth_user2.get_user().await?.user.friends;
+    assert_eq!(user1_friends.len(), 1);
+    assert_eq!(user1_friends[0], user2.id);
+    assert_eq!(user2_friends.len(), 1);
+    assert_eq!(user2_friends[0], user1.id);
+
+    auth_user1.delete_user().await?;
+    auth_user2.delete_user().await?;
 
     Ok(())
 }

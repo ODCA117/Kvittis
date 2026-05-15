@@ -195,52 +195,6 @@ impl Store for SqliteStore {
         Ok(())
     }
 
-    // FIXME: Fix in future. Friendship should not be instant.
-    async fn add_friend(&self, user1: UserId, user2: UserId) -> Result<()> {
-        let (id1, id2) = if user1 < user2 {
-            (user1, user2)
-        } else {
-            (user2, user1)
-        };
-
-        let exists: bool = print_sql_result(
-            sqlx::query_scalar(
-                r#"
-            SELECT EXISTS (
-                SELECT 1
-                FROM friendships
-                WHERE user1_id = $1 AND user2_id = $2
-            )"#,
-            )
-            .bind(id1)
-            .bind(id2)
-            .fetch_one(&self.pool)
-            .await,
-        )?;
-
-        if exists {
-            warn!("Friendship exists");
-            return Err(anyhow!("Friendship already exists"));
-        }
-
-        print_sql_result(
-            sqlx::query(
-                r#"
-            INSERT INTO friendships (user1_id, user2_id)
-            VALUES ($1, $2)
-            "#,
-            )
-            .bind(id1)
-            .bind(id2)
-            .execute(&self.pool)
-            .await,
-        )?;
-
-        info!("Add friendship between {:?} and {:?}", user1, user2);
-
-        Ok(())
-    }
-
     async fn list_users(&self) -> Result<Vec<UserRow>> {
         /* Returns a vec with users */
         let users: Vec<UserRow> = print_sql_result(
