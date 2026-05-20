@@ -18,7 +18,8 @@ pub trait Store: Send + Sync {
     async fn list_users(&self) -> Result<Vec<UserRow>>;
     async fn _update_user(&self, user: UserRow) -> Result<UserRow>;
     async fn create_friend_request(&self, request: FriendRequestRow) -> Result<FriendRequestRow>;
-
+    async fn get_outgoing_requests(&self, user: UserId) -> Result<Vec<FriendRequestRow>>;
+    async fn get_incoming_requests(&self, user: UserId) -> Result<Vec<FriendRequestRow>>;
     // --- Groups ---
     async fn create_group(&self, group: GroupRow) -> Result<GroupRow>;
     async fn get_group(&self, id: GroupId) -> Result<Option<GroupRow>>;
@@ -70,14 +71,14 @@ impl UserRow {
     }
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct FriendRequestRow {
     pub id: FriendRequestId,
-    pub sender: UserId,
-    pub receiver: UserId,
+    pub sender_id: UserId,
+    pub receiver_id: UserId,
     pub status: String,
-    pub created_at: DateTime<FixedOffset>,
-    pub updated_at: DateTime<FixedOffset>,
+    pub created_at: String,
+    pub updated_at: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

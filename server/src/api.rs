@@ -7,7 +7,8 @@ use axum::{
 use common::api::{
     ApiResponse, AuthorizedUserRequest, BalanceRequest, CreateExpenseResponse, CreateGroupResponse,
     ExpenseRequest, GetExpenseResponse, GetGroupResponse, GetUserResponse, GroupRequest,
-    LoginResponse, RegisterResponse, SearchUserResponse, UnauthorizedUserRequest,
+    LoginResponse, PendingFriendRequestResponse, RegisterResponse, SearchUserResponse,
+    UnauthorizedUserRequest,
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -230,13 +231,37 @@ pub async fn authorized_user_handler(
         }
 
         AuthorizedUserRequest::GetPendingFriendRequests => {
-            json_error(StatusCode::NOT_IMPLEMENTED, "Not Implemented")
+            debug!("Get pending friend requests: User={:?}", claims.sub);
+            let incoming = state
+                .list_pending_incoming_friend_requests(claims.sub)
+                .await;
+            let outgoing = state
+                .list_pending_outgoing_friend_requests(claims.sub)
+                .await;
+            if let (Ok(incoming), Ok(outgoing)) = (incoming, outgoing) {
+                json_success(
+                    StatusCode::OK,
+                    serde_json::to_value(PendingFriendRequestResponse { incoming, outgoing })
+                        .unwrap(),
+                )
+            } else {
+                json_error(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Failed to get friend requests",
+                )
+            }
         }
 
         AuthorizedUserRequest::HandleFriendRequest {
-            request_id: _,
-            request_action: _,
-        } => json_error(StatusCode::NOT_IMPLEMENTED, "Not Implemented"),
+            request_id,
+            request_action,
+        } => {
+            debug!(
+                "Handle friend request: Request_id={:?}, update={:?}",
+                request_id, request_action
+            );
+            json_error(StatusCode::NOT_IMPLEMENTED, "Not implemented")
+        }
     }
 }
 

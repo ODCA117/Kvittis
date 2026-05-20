@@ -114,6 +114,13 @@ impl Store for FileStore {
         Ok(request)
     }
 
+    async fn get_outgoing_requests(&self, _user: UserId) -> Result<Vec<FriendRequestRow>> {
+        todo!()
+    }
+    async fn get_incoming_requests(&self, _user: UserId) -> Result<Vec<FriendRequestRow>> {
+        todo!()
+    }
+
     // -------- Groups --------
 
     async fn create_group(&self, group: GroupRow) -> Result<GroupRow> {

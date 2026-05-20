@@ -256,17 +256,63 @@ impl Store for SqliteStore {
                 VALUES ($1, $2, $3, $4, $5, $6)
             "#)
             .bind(request.id)
-            .bind(request.sender)
-            .bind(request.receiver)
+            .bind(request.sender_id)
+            .bind(request.receiver_id)
             .bind(&request.status)
-            .bind(request.created_at.to_rfc3339())
-            .bind(request.updated_at.to_rfc3339())
+            .bind(&request.created_at)
+            .bind(&request.updated_at)
             .execute(&self.pool)
             .await,
         ) {
             Ok(_) => Ok(request),
             Err(_e) => Err(anyhow!("Failed to insert into friend_requests table")),
         }
+    }
+
+    async fn get_outgoing_requests(&self, user: UserId) -> Result<Vec<FriendRequestRow>> {
+        let requests = print_sql_result(
+            sqlx::query_as(
+                r#"
+                SELECT
+                    id,
+                    sender_id,
+                    receiver_id,
+                    status,
+                    created_at,
+                    updated_at
+                FROM friend_requests
+                WHERE sender_id = $1
+            "#,
+            )
+            .bind(user)
+            .fetch_all(&self.pool)
+            .await,
+        )?;
+
+        Ok(requests)
+    }
+
+    async fn get_incoming_requests(&self, user: UserId) -> Result<Vec<FriendRequestRow>> {
+        let requests = print_sql_result(
+            sqlx::query_as(
+                r#"
+                        SELECT
+                            id,
+                            sender_id,
+                            receiver_id,
+                            status,
+                            created_at,
+                            updated_at
+                        FROM friend_requests
+                        WHERE receiver_id = $1
+                    "#,
+            )
+            .bind(user)
+            .fetch_all(&self.pool)
+            .await,
+        )?;
+
+        Ok(requests)
     }
 
     // --- Groups ---

@@ -206,16 +206,46 @@ impl AppState {
         let date_time = now.with_timezone(&FixedOffset::east_opt(0).unwrap());
         let row = FriendRequestRow {
             id: Uuid::new_v4(),
-            sender,
-            receiver,
+            sender_id: sender,
+            receiver_id: receiver,
             status: FriendRequestState::Pending.to_string(),
-            created_at: date_time,
-            updated_at: date_time,
+            created_at: date_time.to_rfc3339(),
+            updated_at: date_time.to_rfc3339(),
         };
         let stored = guard.store.create_friend_request(row).await?;
         Ok(FriendRequestResponse {
             request: stored.into(),
         })
+    }
+
+    pub async fn list_pending_outgoing_friend_requests(
+        &self,
+        user: UserId,
+    ) -> Result<Vec<FriendRequest>> {
+        let guard = self.data.write().await;
+        let outgoing_requests: Vec<FriendRequest> = guard
+            .store
+            .get_outgoing_requests(user)
+            .await?
+            .iter()
+            .map(|r| r.into())
+            .collect();
+        Ok(outgoing_requests)
+    }
+
+    pub async fn list_pending_incoming_friend_requests(
+        &self,
+        user: UserId,
+    ) -> Result<Vec<FriendRequest>> {
+        let guard = self.data.write().await;
+        let incoming_requests: Vec<FriendRequest> = guard
+            .store
+            .get_incoming_requests(user)
+            .await?
+            .iter()
+            .map(|r| r.into())
+            .collect();
+        Ok(incoming_requests)
     }
 
     pub async fn create_expense(&self, expense_req: CreateExpenseRequest) -> Result<Expense> {
@@ -503,13 +533,31 @@ impl From<FriendRequestRow> for FriendRequest {
     fn from(value: FriendRequestRow) -> Self {
         FriendRequest {
             id: value.id,
-            from: value.sender,
-            to: value.receiver,
+            from: value.sender_id,
+            to: value.receiver_id,
             // NOTE: The following can fail if the String does not contain the correct values.
             status: common::FriendRequestState::from_str(&value.status)
                 .unwrap_or(common::FriendRequestState::Pending),
-            created_at: value.created_at,
-            updated_at: value.updated_at,
+            created_at: chrono::DateTime::from_str(&value.created_at)
+                .expect("Failed to convert to datetime"),
+            updated_at: chrono::DateTime::from_str(&value.updated_at)
+                .expect("Failed to convert to datetime"),
+        }
+    }
+}
+impl From<&FriendRequestRow> for FriendRequest {
+    fn from(value: &FriendRequestRow) -> Self {
+        FriendRequest {
+            id: value.id,
+            from: value.sender_id,
+            to: value.receiver_id,
+            // NOTE: The following can fail if the String does not contain the correct values.
+            status: common::FriendRequestState::from_str(&value.status)
+                .unwrap_or(common::FriendRequestState::Pending),
+            created_at: chrono::DateTime::from_str(&value.created_at)
+                .expect("Failed to convert to datetime"),
+            updated_at: chrono::DateTime::from_str(&value.updated_at)
+                .expect("Failed to convert to datetime"),
         }
     }
 }
