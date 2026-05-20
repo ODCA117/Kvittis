@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize, Serialize};
 
-use common::{ExpenseId, GroupId, UserId};
+use common::{ExpenseId, FriendRequestId, GroupId, UserId};
 
 #[async_trait]
 pub trait Store: Send + Sync {
@@ -17,6 +17,7 @@ pub trait Store: Send + Sync {
     async fn delete_user(&self, id: UserId) -> Result<()>;
     async fn list_users(&self) -> Result<Vec<UserRow>>;
     async fn _update_user(&self, user: UserRow) -> Result<UserRow>;
+    async fn create_friend_request(&self, request: FriendRequestRow) -> Result<FriendRequestRow>;
 
     // --- Groups ---
     async fn create_group(&self, group: GroupRow) -> Result<GroupRow>;
@@ -67,6 +68,16 @@ impl UserRow {
             deleted_at,
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct FriendRequestRow {
+    pub id: FriendRequestId,
+    pub sender: UserId,
+    pub receiver: UserId,
+    pub status: String,
+    pub created_at: DateTime<FixedOffset>,
+    pub updated_at: DateTime<FixedOffset>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

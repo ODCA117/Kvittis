@@ -1,3 +1,4 @@
+use std::str::FromStr;
 use std::sync::Arc;
 use std::sync::LazyLock;
 
@@ -10,7 +11,10 @@ use axum_extra::TypedHeader;
 use axum_extra::headers::Authorization;
 use axum_extra::headers::authorization::Bearer;
 use chrono::{DateTime, FixedOffset, TimeDelta, Utc};
+use common::FriendRequest;
+use common::FriendRequestState;
 use common::PublicUser;
+use common::api::FriendRequestResponse;
 use jsonwebtoken::TokenData;
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use tokio::sync::RwLock;
@@ -18,6 +22,7 @@ use tracing::debug;
 use uuid::Uuid;
 
 use crate::api::Claims;
+use crate::db::FriendRequestRow;
 use crate::db::{ExpenseRow, GroupRow, Store, UserRow};
 use std::collections::HashMap;
 
@@ -189,6 +194,28 @@ impl AppState {
         let guard = self.data.write().await;
         let stored = guard.store._update_user(updated_user.into()).await?;
         Ok(stored.into())
+    }
+
+    pub async fn send_friend_request(
+        &self,
+        sender: UserId,
+        receiver: UserId,
+    ) -> Result<FriendRequestResponse> {
+        let guard = self.data.write().await;
+        let now = Utc::now();
+        let date_time = now.with_timezone(&FixedOffset::east_opt(0).unwrap());
+        let row = FriendRequestRow {
+            id: Uuid::new_v4(),
+            sender,
+            receiver,
+            status: FriendRequestState::Pending.to_string(),
+            created_at: date_time,
+            updated_at: date_time,
+        };
+        let stored = guard.store.create_friend_request(row).await?;
+        Ok(FriendRequestResponse {
+            request: stored.into(),
+        })
     }
 
     pub async fn create_expense(&self, expense_req: CreateExpenseRequest) -> Result<Expense> {
@@ -468,6 +495,21 @@ impl From<UserRow> for PublicUser {
         PublicUser {
             id: user.id,
             username: user.username,
+        }
+    }
+}
+
+impl From<FriendRequestRow> for FriendRequest {
+    fn from(value: FriendRequestRow) -> Self {
+        FriendRequest {
+            id: value.id,
+            from: value.sender,
+            to: value.receiver,
+            // NOTE: The following can fail if the String does not contain the correct values.
+            status: common::FriendRequestState::from_str(&value.status)
+                .unwrap_or(common::FriendRequestState::Pending),
+            created_at: value.created_at,
+            updated_at: value.updated_at,
         }
     }
 }

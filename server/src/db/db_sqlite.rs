@@ -9,7 +9,7 @@ use sqlx::{
 };
 use tracing::{debug, info, warn};
 
-use crate::db::{ExpenseRow, GroupRow, Store, UserRow};
+use crate::db::{ExpenseRow, FriendRequestRow, GroupRow, Store, UserRow};
 
 pub struct SqliteStore {
     pool: SqlitePool,
@@ -246,6 +246,27 @@ impl Store for SqliteStore {
         )?;
 
         Ok(user)
+    }
+
+    async fn create_friend_request(&self, request: FriendRequestRow) -> Result<FriendRequestRow> {
+        dbg!(&request);
+        match print_sql_result(sqlx::query(
+            r#"
+                INSERT INTO friend_requests (id, sender_id, receiver_id, status, created_at, updated_at)
+                VALUES ($1, $2, $3, $4, $5, $6)
+            "#)
+            .bind(request.id)
+            .bind(request.sender)
+            .bind(request.receiver)
+            .bind(&request.status)
+            .bind(request.created_at.to_rfc3339())
+            .bind(request.updated_at.to_rfc3339())
+            .execute(&self.pool)
+            .await,
+        ) {
+            Ok(_) => Ok(request),
+            Err(_e) => Err(anyhow!("Failed to insert into friend_requests table")),
+        }
     }
 
     // --- Groups ---

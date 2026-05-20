@@ -1,5 +1,9 @@
 use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize, Serialize};
+use std::{
+    fmt::{self},
+    str::FromStr,
+};
 use uuid::Uuid;
 pub mod api;
 
@@ -46,6 +50,25 @@ pub enum FriendRequestState {
     Pending,
     Rejected,
     Accepted,
+}
+
+impl FromStr for FriendRequestState {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "pending" => Ok(FriendRequestState::Pending),
+            "rejected" => Ok(FriendRequestState::Rejected),
+            "accepted" => Ok(FriendRequestState::Accepted),
+            _ => Err(format!("{s} is not a valid value")),
+        }
+    }
+}
+
+impl fmt::Display for FriendRequestState {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 #[derive(Serialize, Deserialize, Clone, Debug)]

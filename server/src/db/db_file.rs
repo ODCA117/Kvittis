@@ -8,7 +8,7 @@ use tracing::debug;
 
 use common::{ExpenseId, GroupId, UserId};
 
-use crate::db::{ExpenseRow, GroupRow, Store, UserRow};
+use crate::db::{ExpenseRow, FriendRequestRow, GroupRow, Store, UserRow};
 
 /// ===============================
 /// File-backed persistent state
@@ -109,6 +109,9 @@ impl Store for FileStore {
         drop(state);
         self.persist().await?;
         Ok(user)
+    }
+    async fn create_friend_request(&self, request: FriendRequestRow) -> Result<FriendRequestRow> {
+        Ok(request)
     }
 
     // -------- Groups --------

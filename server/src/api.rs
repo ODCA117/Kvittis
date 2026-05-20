@@ -211,8 +211,22 @@ pub async fn authorized_user_handler(
             }
         }
 
-        AuthorizedUserRequest::SendFriendRequest { friend_id: _ } => {
-            json_error(StatusCode::NOT_IMPLEMENTED, "Not Implemented")
+        // TODO: Update this to handle friend requests instead
+        // 1.  User1 creates friend request -> Put into new table friend_requests
+        // 2.  User2 can list all the friend_requests
+        // 3a. User2 Accepts the friend_request -> move friend_request to friends
+        // 3b. User2 Declines the friend_request -> Remove friend_request (or keep hidden?)
+        // 3c. User1 Cancel the friend_request -> Remove the friend_request
+        AuthorizedUserRequest::SendFriendRequest { friend_id } => {
+            // NOTE: Send friend request, need to be accepted
+            debug!(
+                "Send friend request: Sender={:?} Receiver={:?}",
+                claims.sub, friend_id
+            );
+            match state.send_friend_request(claims.sub, friend_id).await {
+                Ok(resp) => json_success(StatusCode::OK, serde_json::to_value(resp).unwrap()),
+                Err(_) => json_error(StatusCode::BAD_REQUEST, "user_id or friend_id not found"),
+            }
         }
 
         AuthorizedUserRequest::GetPendingFriendRequests => {

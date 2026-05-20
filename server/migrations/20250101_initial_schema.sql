@@ -18,6 +18,18 @@ CREATE TABLE friendships (
     FOREIGN KEY (user2_id) REFERENCES users(id)
 );
 
+-- Friend Requests
+CREATE TABLE friend_requests (
+    id TEXT PRIMARY KEY NOT NULL,
+    sender_id TEXT NOT NULL,
+    receiver_id TEXT NOT NULL,
+    status TEXT NOT NULL CHECK(status IN ('Pending', 'Accepted', 'Rejected')),
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL,
+    FOREIGN KEY (sender_id) REFERENCES users(id),
+    FOREIGN KEY (receiver_id) REFERENCES users(id)
+);
+
 -- Groups Table
 CREATE TABLE groups (
     id TEXT PRIMARY KEY NOT NULL,
@@ -55,4 +67,3 @@ CREATE TABLE expense_participants (
     FOREIGN KEY (expense_id) REFERENCES expenses(id),
     FOREIGN KEY (user_id) REFERENCES users(id)
 );
-
