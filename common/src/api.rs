@@ -40,6 +40,11 @@ pub struct PendingFriendRequestResponse {
 }
 
 #[derive(Serialize, Deserialize, Debug)]
+pub struct HandleFriendRequestResponse {
+    pub status: String,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
 pub struct CreateGroupResponse {
     pub id: GroupId,
     pub name: String,

@@ -12,13 +12,15 @@ use axum_extra::headers::Authorization;
 use axum_extra::headers::authorization::Bearer;
 use chrono::{DateTime, FixedOffset, TimeDelta, Utc};
 use common::FriendRequest;
+use common::FriendRequestAction;
+use common::FriendRequestId;
 use common::FriendRequestState;
 use common::PublicUser;
 use common::api::FriendRequestResponse;
 use jsonwebtoken::TokenData;
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation};
 use tokio::sync::RwLock;
-use tracing::debug;
+use tracing::{debug, warn};
 use uuid::Uuid;
 
 use crate::api::Claims;
@@ -86,7 +88,6 @@ impl AppState {
             .extract::<TypedHeader<Authorization<Bearer>>>()
             .await
             .map_err(|_| anyhow!("Invalid Token"))?;
-        debug!("Token data: {:?}", bearer.token());
         let token_data =
             jsonwebtoken::decode::<Claims>(bearer.token(), &KEYS.decoding, &Validation::default())
                 .map_err(|_| anyhow!("Invalid Token"))?;
@@ -151,6 +152,7 @@ impl AppState {
         let guard = self.data.read().await;
         match guard.store.get_user_by_id(id).await? {
             Some(u) => Ok(u.into()),
+            //TODO: Fetch the friendships here.
             None => Err(anyhow!("Failed to get user")),
         }
     }
@@ -185,6 +187,8 @@ impl AppState {
 
     pub async fn delete_user(&self, id: UserId) -> Result<()> {
         let guard = self.data.write().await;
+        guard.store.delete_friend_requests_from_user(id).await?;
+        guard.store.remove_friendship(id).await?;
         guard.store.delete_user(id).await?;
         Ok(())
     }
@@ -230,6 +234,9 @@ impl AppState {
             .iter()
             .map(|r| r.into())
             .collect();
+        if outgoing_requests.len() > 0 {
+            warn!("outgoing_requests status: {:?}", outgoing_requests[0].status);
+        }
         Ok(outgoing_requests)
     }
 
@@ -245,7 +252,37 @@ impl AppState {
             .iter()
             .map(|r| r.into())
             .collect();
+        if incoming_requests.len() > 0 {
+            warn!("incoming_requests status: {:?}", incoming_requests[0].status);
+        }
         Ok(incoming_requests)
+    }
+
+    pub async fn handle_friend_request(
+        &self,
+        request_id: FriendRequestId,
+        action: FriendRequestAction
+    ) -> Result<()> {
+        let guard = self.data.write().await;
+        let mut request: FriendRequestRow = guard
+            .store
+            .get_friend_request(request_id)
+            .await?
+            .into();
+        match action {
+            FriendRequestAction::Accept => {
+                request.status = FriendRequestState::Accepted.to_string();
+                guard.store.add_friendship(request.sender_id, request.receiver_id).await?;
+            },
+            FriendRequestAction::Reject => request.status = FriendRequestState::Rejected.to_string(),
+            FriendRequestAction::Cancel => request.status = FriendRequestState::Rejected.to_string(),
+        }
+
+        let now = Utc::now();
+        let date_time = now.with_timezone(&FixedOffset::east_opt(0).unwrap());
+        request.updated_at = date_time.to_rfc3339();
+        guard.store.update_friend_request(request).await?;
+        Ok(())
     }
 
     pub async fn create_expense(&self, expense_req: CreateExpenseRequest) -> Result<Expense> {

@@ -18,8 +18,14 @@ pub trait Store: Send + Sync {
     async fn list_users(&self) -> Result<Vec<UserRow>>;
     async fn _update_user(&self, user: UserRow) -> Result<UserRow>;
     async fn create_friend_request(&self, request: FriendRequestRow) -> Result<FriendRequestRow>;
+    async fn get_friend_request(&self, request: FriendRequestId) -> Result<FriendRequestRow>;
     async fn get_outgoing_requests(&self, user: UserId) -> Result<Vec<FriendRequestRow>>;
     async fn get_incoming_requests(&self, user: UserId) -> Result<Vec<FriendRequestRow>>;
+    async fn update_friend_request(&self, request: FriendRequestRow) -> Result<()>;
+    async fn delete_friend_requests_from_user(&self, user: UserId) -> Result<()>;
+    async fn add_friendship(&self, user1: UserId, user2: UserId) -> Result<()>;
+    async fn remove_friendship(&self, user: UserId) -> Result<()>;
+
     // --- Groups ---
     async fn create_group(&self, group: GroupRow) -> Result<GroupRow>;
     async fn get_group(&self, id: GroupId) -> Result<Option<GroupRow>>;

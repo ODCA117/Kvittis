@@ -1,13 +1,8 @@
 use anyhow::Result;
 use common::{
-    api::{
-        ApiResponse, AuthorizedUserRequest, BalanceEntry, BalanceRequest, CreateExpenseResponse,
-        CreateGroupResponse, ExpenseRequest, FriendRequestResponse, GetExpenseResponse,
-        GetGroupResponse, GetUserResponse, GroupBalance, GroupRequest, LoginResponse,
-        PendingFriendRequestResponse, RegisterResponse, SearchUserResponse,
-        UnauthorizedUserRequest,
-    },
-    ExpenseId, FriendRequestAction, FriendRequestId, GroupId, NewUser, UserId,
+    ExpenseId, FriendRequestAction, FriendRequestId, GroupId, NewUser, UserId, api::{
+        ApiResponse, AuthorizedUserRequest, BalanceEntry, BalanceRequest, CreateExpenseResponse, CreateGroupResponse, ExpenseRequest, FriendRequestResponse, GetExpenseResponse, GetGroupResponse, GetUserResponse, GroupBalance, GroupRequest, HandleFriendRequestResponse, LoginResponse, PendingFriendRequestResponse, RegisterResponse, SearchUserResponse, UnauthorizedUserRequest
+    }
 };
 use reqwest::{Client as HttpClient, Url};
 
@@ -217,6 +212,7 @@ impl AuthenticatedKvittisClient {
             request_id,
             request_action: action,
         };
+        dbg!(&req);
         let resp = self
             .http
             .post(self.url.join(AUTH_USER_ENDPOINT)?)
@@ -225,9 +221,9 @@ impl AuthenticatedKvittisClient {
             .send()
             .await?;
         dbg!(&resp);
-        let resp = resp.json::<ApiResponse<()>>().await?;
+        let resp = resp.json::<ApiResponse<HandleFriendRequestResponse>>().await?;
         match resp {
-            ApiResponse::Success(r) => Ok(r),
+            ApiResponse::Success(_r) => Ok(()),
             ApiResponse::Error { message } => Err(anyhow::anyhow!(message)),
         }
     }

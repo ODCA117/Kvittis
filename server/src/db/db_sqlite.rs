@@ -2,7 +2,7 @@ use std::{collections::HashMap, path::Path};
 
 use anyhow::{Result, anyhow};
 use chrono::DateTime;
-use common::{ExpenseId, GroupId, UserId};
+use common::{ExpenseId, FriendRequestId, GroupId, UserId};
 use sqlx::{
     FromRow, Row, SqlitePool,
     sqlite::{SqlitePoolOptions, SqliteRow},
@@ -71,6 +71,7 @@ impl Store for SqliteStore {
     async fn create_user(&self, user: UserRow) -> Result<UserRow> {
         // find if old email already exists but is deleted.
         // Allow for complete reinstatiation
+        // FIXME: search for duplicate username as well!
         let old_user: Option<UserRow> = sqlx::query_as(
             r#"
             SELECT id, username, email, password_hash, created_at, updated_at, deleted_at
@@ -82,7 +83,6 @@ impl Store for SqliteStore {
         .fetch_optional(&self.pool)
         .await?;
 
-        // FIXME: Can add an duplicate email here...
         let res = if let Some(_u) = old_user {
             sqlx::query(
                 r#"
@@ -249,7 +249,7 @@ impl Store for SqliteStore {
     }
 
     async fn create_friend_request(&self, request: FriendRequestRow) -> Result<FriendRequestRow> {
-        dbg!(&request);
+        // dbg!(&request);
         match print_sql_result(sqlx::query(
             r#"
                 INSERT INTO friend_requests (id, sender_id, receiver_id, status, created_at, updated_at)
@@ -269,8 +269,31 @@ impl Store for SqliteStore {
         }
     }
 
+    async fn get_friend_request(&self, id: FriendRequestId) -> Result<FriendRequestRow> {
+        let request: Result<FriendRequestRow> = print_sql_result(
+            sqlx::query_as(
+            r#"
+            SELECT
+                id,
+                sender_id,
+                receiver_id,
+                status,
+                created_at,
+                updated_at
+            FROM friend_requests
+            WHERE id = $1
+            "#,
+            )
+            .bind(id)
+            .fetch_one(&self.pool)
+            .await
+        );
+
+        request
+    }
+
     async fn get_outgoing_requests(&self, user: UserId) -> Result<Vec<FriendRequestRow>> {
-        let requests = print_sql_result(
+        let requests: Vec<FriendRequestRow> = print_sql_result(
             sqlx::query_as(
                 r#"
                 SELECT
@@ -281,7 +304,7 @@ impl Store for SqliteStore {
                     created_at,
                     updated_at
                 FROM friend_requests
-                WHERE sender_id = $1
+                WHERE sender_id = $1 AND status = 'Pending'
             "#,
             )
             .bind(user)
@@ -289,11 +312,14 @@ impl Store for SqliteStore {
             .await,
         )?;
 
+        if requests.len() > 0 {
+            warn!("requests status: {:?}", &requests[0].status);
+        }
         Ok(requests)
     }
 
     async fn get_incoming_requests(&self, user: UserId) -> Result<Vec<FriendRequestRow>> {
-        let requests = print_sql_result(
+        let requests: Vec<FriendRequestRow> = print_sql_result(
             sqlx::query_as(
                 r#"
                         SELECT
@@ -304,15 +330,87 @@ impl Store for SqliteStore {
                             created_at,
                             updated_at
                         FROM friend_requests
-                        WHERE receiver_id = $1
+                        WHERE receiver_id = $1 AND status = 'Pending'
                     "#,
             )
             .bind(user)
             .fetch_all(&self.pool)
-            .await,
+            .await
         )?;
 
+        if requests.len() > 0 {
+            warn!("requests status: {:?}", &requests[0].status);
+        }
         Ok(requests)
+    }
+
+    async fn update_friend_request(&self, request: FriendRequestRow) -> Result<()> {
+        print_sql_result(
+            sqlx::query(
+                r#"
+                    UPDATE friend_requests
+                    SET status = $1, updated_at = $2
+                    WHERE id = $3;
+                "#
+            )
+            .bind(request.status)
+            .bind(request.updated_at)
+            .bind(request.id)
+            .execute(&self.pool)
+            .await
+        )?;
+
+        Ok(())
+    }
+
+    async fn delete_friend_requests_from_user(&self, user_id: UserId) -> Result<()> {
+        print_sql_result(
+            sqlx::query(
+                r#"
+                    DELETE FROM friend_requests
+                    WHERE sender_id = $1 OR receiver_id = $1;
+                "#
+            )
+            .bind(user_id)
+            .execute(&self.pool)
+            .await
+        )?;
+
+        Ok(())
+
+    }
+
+    async fn add_friendship(&self, user1: UserId, user2: UserId) -> Result<()> {
+        print_sql_result(
+            sqlx::query(
+                r#"
+                    INSERT INTO friendships (user1_id, user2_id)
+                    VALUES ($1, $2);
+                "#
+            )
+            .bind(user1)
+            .bind(user2)
+            .execute(&self.pool)
+            .await
+        )?;
+
+        Ok(())
+    }
+
+    async fn remove_friendship(&self, user: UserId) -> Result<()> {
+        print_sql_result(
+            sqlx::query(
+                r#"
+                    DELETE FROM friendships
+                    WHERE user1_id = $1 OR user2_id = $1;
+                "#
+            )
+            .bind(user)
+            .execute(&self.pool)
+            .await
+        )?;
+
+        Ok(())
     }
 
     // --- Groups ---

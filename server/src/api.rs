@@ -5,10 +5,7 @@ use axum::{
     response::{IntoResponse, Response},
 };
 use common::api::{
-    ApiResponse, AuthorizedUserRequest, BalanceRequest, CreateExpenseResponse, CreateGroupResponse,
-    ExpenseRequest, GetExpenseResponse, GetGroupResponse, GetUserResponse, GroupRequest,
-    LoginResponse, PendingFriendRequestResponse, RegisterResponse, SearchUserResponse,
-    UnauthorizedUserRequest,
+    ApiResponse, AuthorizedUserRequest, BalanceRequest, CreateExpenseResponse, CreateGroupResponse, ExpenseRequest, GetExpenseResponse, GetGroupResponse, GetUserResponse, GroupRequest, HandleFriendRequestResponse, LoginResponse, PendingFriendRequestResponse, RegisterResponse, SearchUserResponse, UnauthorizedUserRequest
 };
 use serde::{Deserialize, Serialize};
 use serde_json::json;
@@ -260,7 +257,13 @@ pub async fn authorized_user_handler(
                 "Handle friend request: Request_id={:?}, update={:?}",
                 request_id, request_action
             );
-            json_error(StatusCode::NOT_IMPLEMENTED, "Not implemented")
+            match state.handle_friend_request(request_id, request_action).await {
+                Ok(_) => json_success(
+                    StatusCode::OK,
+                    serde_json::to_value(HandleFriendRequestResponse { status: "Success".to_string() }).unwrap(),
+                ),
+                Err(_e) => json_error(StatusCode::NOT_FOUND, "Friend Request not found")
+            }
         }
     }
 }

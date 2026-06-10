@@ -56,11 +56,11 @@ impl FromStr for FriendRequestState {
     type Err = String;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        match s.to_lowercase().as_str() {
-            "pending" => Ok(FriendRequestState::Pending),
-            "rejected" => Ok(FriendRequestState::Rejected),
-            "accepted" => Ok(FriendRequestState::Accepted),
-            _ => Err(format!("{s} is not a valid value")),
+        match s {
+            "Pending" => Ok(FriendRequestState::Pending),
+            "Rejected" => Ok(FriendRequestState::Rejected),
+            "Accepted" => Ok(FriendRequestState::Accepted),
+            _ => Err(format!("{s} is not a valid string")),
         }
     }
 }

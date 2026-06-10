@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use tokio::sync::RwLock;
 use tracing::debug;
 
-use common::{ExpenseId, GroupId, UserId};
+use common::{ExpenseId, FriendRequestId, GroupId, UserId};
 
 use crate::db::{ExpenseRow, FriendRequestRow, GroupRow, Store, UserRow};
 
@@ -114,6 +114,10 @@ impl Store for FileStore {
         Ok(request)
     }
 
+    async fn get_friend_request(&self, _request: FriendRequestId) -> Result<FriendRequestRow> {
+        todo!()
+    }
+
     async fn get_outgoing_requests(&self, _user: UserId) -> Result<Vec<FriendRequestRow>> {
         todo!()
     }
@@ -121,6 +125,21 @@ impl Store for FileStore {
         todo!()
     }
 
+    async fn update_friend_request(&self, _request: FriendRequestRow) -> Result<()> {
+        todo!()
+    }
+
+    async fn delete_friend_requests_from_user(&self, _user: UserId) -> Result<()> {
+        todo!()
+    }
+
+    async fn add_friendship(&self, _user1: UserId, _user2: UserId) -> Result<()> {
+        todo!()
+    }
+
+    async fn remove_friendship(&self, _user: UserId) -> Result<()> {
+        todo!()
+    }
     // -------- Groups --------
 
     async fn create_group(&self, group: GroupRow) -> Result<GroupRow> {
