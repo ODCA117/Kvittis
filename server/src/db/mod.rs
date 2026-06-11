@@ -17,6 +17,7 @@ pub trait Store: Send + Sync {
     async fn delete_user(&self, id: UserId) -> Result<()>;
     async fn list_users(&self) -> Result<Vec<UserRow>>;
     async fn _update_user(&self, user: UserRow) -> Result<UserRow>;
+    async fn get_user_friends(&self, id: UserId) -> Result<Vec<UserId>>;
     async fn create_friend_request(&self, request: FriendRequestRow) -> Result<FriendRequestRow>;
     async fn get_friend_request(&self, request: FriendRequestId) -> Result<FriendRequestRow>;
     async fn get_outgoing_requests(&self, user: UserId) -> Result<Vec<FriendRequestRow>>;

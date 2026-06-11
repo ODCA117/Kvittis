@@ -248,6 +248,29 @@ impl Store for SqliteStore {
         Ok(user)
     }
 
+    async fn get_user_friends(&self, id: UserId) -> Result<Vec<UserId>> {
+        debug!("user: {:?}", id);
+        let friend_rows  = print_sql_result(
+            sqlx::query(
+                r#"
+                    SELECT
+                        CASE
+                            WHEN user1_id = $1 THEN user2_id
+                            ELSE user1_id
+                        END AS friend_id
+                    FROM friendships
+                    WHERE user1_id = $1 OR user2_id = $1;
+                "#
+            )
+            .bind(id)
+            .fetch_all(&self.pool)
+            .await
+        )?;
+
+        let friends = friend_rows.iter().map(|f| f.get("friend_id")).collect();
+        Ok(friends)
+    }
+
     async fn create_friend_request(&self, request: FriendRequestRow) -> Result<FriendRequestRow> {
         // dbg!(&request);
         match print_sql_result(sqlx::query(
@@ -381,6 +404,7 @@ impl Store for SqliteStore {
     }
 
     async fn add_friendship(&self, user1: UserId, user2: UserId) -> Result<()> {
+        debug!("Add friendship: user1: {:?}, user2 {:?}", user1, user2);
         print_sql_result(
             sqlx::query(
                 r#"

@@ -110,6 +110,11 @@ impl Store for FileStore {
         self.persist().await?;
         Ok(user)
     }
+
+    async fn get_user_friends(&self, _id: UserId) -> Result<Vec<UserId>> {
+        todo!()
+    }
+
     async fn create_friend_request(&self, request: FriendRequestRow) -> Result<FriendRequestRow> {
         Ok(request)
     }

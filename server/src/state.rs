@@ -151,7 +151,14 @@ impl AppState {
     pub async fn get_user(&self, id: UserId) -> Result<User> {
         let guard = self.data.read().await;
         match guard.store.get_user_by_id(id).await? {
-            Some(u) => Ok(u.into()),
+            Some(u) => {
+                let mut user: User = u.into();
+                let friends = guard.store.get_user_friends(id).await?;
+                debug!("friends: {:?}", friends);
+                user.friends = friends;
+
+                Ok(user)
+            },
             //TODO: Fetch the friendships here.
             None => Err(anyhow!("Failed to get user")),
         }
@@ -272,6 +279,7 @@ impl AppState {
         match action {
             FriendRequestAction::Accept => {
                 request.status = FriendRequestState::Accepted.to_string();
+                warn!("Add friend ship");
                 guard.store.add_friendship(request.sender_id, request.receiver_id).await?;
             },
             FriendRequestAction::Reject => request.status = FriendRequestState::Rejected.to_string(),

@@ -123,8 +123,8 @@ async fn test_send_friend_request() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_cancel_friend_request() -> anyhow::Result<()> {
     let client = UnauthClient::new(BASE_URL)?;
-    let new_user1 = create_new_user("send_friend_request_user1".to_owned());
-    let new_user2 = create_new_user("send_friend_request_user2".to_owned());
+    let new_user1 = create_new_user("cancel_friend_request_user1".to_owned());
+    let new_user2 = create_new_user("cancel_friend_request_user2".to_owned());
     let user1 = client.register_user(new_user1.clone()).await?.user;
     let user2 = client.register_user(new_user2.clone()).await?.user;
 
@@ -163,8 +163,8 @@ async fn test_cancel_friend_request() -> anyhow::Result<()> {
 #[tokio::test]
 async fn test_accept_friend_request() -> anyhow::Result<()> {
     let client = UnauthClient::new(BASE_URL)?;
-    let new_user1 = create_new_user("send_friend_request_user1".to_owned());
-    let new_user2 = create_new_user("send_friend_request_user2".to_owned());
+    let new_user1 = create_new_user("accept_friend_request_user1".to_owned());
+    let new_user2 = create_new_user("accept_friend_request_user2".to_owned());
     let user1 = client.register_user(new_user1.clone()).await?.user;
     let user2 = client.register_user(new_user2.clone()).await?.user;
 
@@ -187,7 +187,7 @@ async fn test_accept_friend_request() -> anyhow::Result<()> {
     );
 
     auth_user1
-        .handle_friend_request(friend_req.id, FriendRequestAction::Cancel)
+        .handle_friend_request(friend_req.id, FriendRequestAction::Accept)
         .await?;
 
     let user1_pending_reqs = auth_user1.get_pending_friend_requests().await?;
