@@ -74,9 +74,9 @@ impl Store for SqliteStore {
         // FIXME: search for duplicate username as well!
         let old_user: Option<UserRow> = sqlx::query_as(
             r#"
-            SELECT id, username, email, password_hash, created_at, updated_at, deleted_at
-            FROM users
-            WHERE email = $1 AND deleted_at IS NOT NULL
+                SELECT id, username, email, password_hash, created_at, updated_at, deleted_at
+                FROM users
+                WHERE email = $1 AND deleted_at IS NOT NULL
             "#,
         )
         .bind(user.email.clone())
@@ -109,8 +109,8 @@ impl Store for SqliteStore {
         } else {
             sqlx::query(
                 r#"
-                INSERT INTO users (id, username, email, password_hash, created_at, updated_at, deleted_at)
-                VALUES ($1, $2, $3, $4, $5, $6, $7)
+                    INSERT INTO users (id, username, email, password_hash, created_at, updated_at, deleted_at)
+                    VALUES ($1, $2, $3, $4, $5, $6, $7)
                 "#,
             )
             .bind(user.id)
@@ -139,9 +139,9 @@ impl Store for SqliteStore {
     async fn get_user_by_id(&self, id: UserId) -> Result<Option<UserRow>> {
         let user: Option<UserRow> = sqlx::query_as(
             r#"
-            SELECT id, username, email, password_hash, created_at, updated_at, deleted_at
-            FROM users
-            WHERE id = $1 AND deleted_at IS NULL
+                SELECT id, username, email, password_hash, created_at, updated_at, deleted_at
+                FROM users
+                WHERE id = $1 AND deleted_at IS NULL
             "#,
         )
         .bind(id)
@@ -155,9 +155,9 @@ impl Store for SqliteStore {
     async fn get_user_by_name(&self, name: String) -> Result<Option<UserRow>> {
         let user: Option<UserRow> = sqlx::query_as(
             r#"
-            SELECT id, username, email, password_hash, created_at, updated_at, deleted_at
-            FROM users
-            WHERE username = $1 AND deleted_at IS NULL
+                SELECT id, username, email, password_hash, created_at, updated_at, deleted_at
+                FROM users
+                WHERE username = $1 AND deleted_at IS NULL
             "#,
         )
         .bind(name)
@@ -180,9 +180,9 @@ impl Store for SqliteStore {
         print_sql_result(
             sqlx::query(
                 r#"
-            UPDATE users
-            SET deleted_at = $1
-            WHERE id = $2
+                    UPDATE users
+                    SET deleted_at = $1
+                    WHERE id = $2
             "#,
             )
             .bind(user.deleted_at.unwrap().to_rfc3339())
@@ -200,16 +200,16 @@ impl Store for SqliteStore {
         let users: Vec<UserRow> = print_sql_result(
             sqlx::query_as(
                 r#"
-            SELECT
-                id,
-                username,
-                email,
-                password_hash,
-                created_at,
-                updated_at,
-                deleted_at
-            FROM users
-            WHERE deleted_at is NULL
+                    SELECT
+                        id,
+                        username,
+                        email,
+                        password_hash,
+                        created_at,
+                        updated_at,
+                        deleted_at
+                    FROM users
+                    WHERE deleted_at is NULL
             "#,
             )
             .fetch_all(&self.pool)
@@ -250,7 +250,7 @@ impl Store for SqliteStore {
 
     async fn get_user_friends(&self, id: UserId) -> Result<Vec<UserId>> {
         debug!("user: {:?}", id);
-        let friend_rows  = print_sql_result(
+        let friend_rows = print_sql_result(
             sqlx::query(
                 r#"
                     SELECT
@@ -260,11 +260,11 @@ impl Store for SqliteStore {
                         END AS friend_id
                     FROM friendships
                     WHERE user1_id = $1 OR user2_id = $1;
-                "#
+                "#,
             )
             .bind(id)
             .fetch_all(&self.pool)
-            .await
+            .await,
         )?;
 
         let friends = friend_rows.iter().map(|f| f.get("friend_id")).collect();
@@ -295,21 +295,21 @@ impl Store for SqliteStore {
     async fn get_friend_request(&self, id: FriendRequestId) -> Result<FriendRequestRow> {
         let request: Result<FriendRequestRow> = print_sql_result(
             sqlx::query_as(
-            r#"
-            SELECT
-                id,
-                sender_id,
-                receiver_id,
-                status,
-                created_at,
-                updated_at
-            FROM friend_requests
-            WHERE id = $1
+                r#"
+                    SELECT
+                        id,
+                        sender_id,
+                        receiver_id,
+                        status,
+                        created_at,
+                        updated_at
+                    FROM friend_requests
+                    WHERE id = $1
             "#,
             )
             .bind(id)
             .fetch_one(&self.pool)
-            .await
+            .await,
         );
 
         request
@@ -319,23 +319,23 @@ impl Store for SqliteStore {
         let requests: Vec<FriendRequestRow> = print_sql_result(
             sqlx::query_as(
                 r#"
-                SELECT
-                    id,
-                    sender_id,
-                    receiver_id,
-                    status,
-                    created_at,
-                    updated_at
-                FROM friend_requests
-                WHERE sender_id = $1 AND status = 'Pending'
-            "#,
+                    SELECT
+                        id,
+                        sender_id,
+                        receiver_id,
+                        status,
+                        created_at,
+                        updated_at
+                    FROM friend_requests
+                    WHERE sender_id = $1 AND status = 'Pending'
+                "#,
             )
             .bind(user)
             .fetch_all(&self.pool)
             .await,
         )?;
 
-        if requests.len() > 0 {
+        if !requests.is_empty() {
             warn!("requests status: {:?}", &requests[0].status);
         }
         Ok(requests)
@@ -345,23 +345,23 @@ impl Store for SqliteStore {
         let requests: Vec<FriendRequestRow> = print_sql_result(
             sqlx::query_as(
                 r#"
-                        SELECT
-                            id,
-                            sender_id,
-                            receiver_id,
-                            status,
-                            created_at,
-                            updated_at
-                        FROM friend_requests
-                        WHERE receiver_id = $1 AND status = 'Pending'
-                    "#,
+                    SELECT
+                        id,
+                        sender_id,
+                        receiver_id,
+                        status,
+                        created_at,
+                        updated_at
+                    FROM friend_requests
+                    WHERE receiver_id = $1 AND status = 'Pending'
+                "#,
             )
             .bind(user)
             .fetch_all(&self.pool)
-            .await
+            .await,
         )?;
 
-        if requests.len() > 0 {
+        if !requests.is_empty() {
             warn!("requests status: {:?}", &requests[0].status);
         }
         Ok(requests)
@@ -374,13 +374,13 @@ impl Store for SqliteStore {
                     UPDATE friend_requests
                     SET status = $1, updated_at = $2
                     WHERE id = $3;
-                "#
+                "#,
             )
             .bind(request.status)
             .bind(request.updated_at)
             .bind(request.id)
             .execute(&self.pool)
-            .await
+            .await,
         )?;
 
         Ok(())
@@ -392,15 +392,14 @@ impl Store for SqliteStore {
                 r#"
                     DELETE FROM friend_requests
                     WHERE sender_id = $1 OR receiver_id = $1;
-                "#
+                "#,
             )
             .bind(user_id)
             .execute(&self.pool)
-            .await
+            .await,
         )?;
 
         Ok(())
-
     }
 
     async fn add_friendship(&self, user1: UserId, user2: UserId) -> Result<()> {
@@ -410,12 +409,12 @@ impl Store for SqliteStore {
                 r#"
                     INSERT INTO friendships (user1_id, user2_id)
                     VALUES ($1, $2);
-                "#
+                "#,
             )
             .bind(user1)
             .bind(user2)
             .execute(&self.pool)
-            .await
+            .await,
         )?;
 
         Ok(())
@@ -427,11 +426,11 @@ impl Store for SqliteStore {
                 r#"
                     DELETE FROM friendships
                     WHERE user1_id = $1 OR user2_id = $1;
-                "#
+                "#,
             )
             .bind(user)
             .execute(&self.pool)
-            .await
+            .await,
         )?;
 
         Ok(())
@@ -571,9 +570,9 @@ impl Store for SqliteStore {
         print_sql_result(
             sqlx::query(
                 r#"
-            DELETE FROM groups
-            WHERE id = $1
-            "#,
+                    DELETE FROM groups
+                    WHERE id = $1
+                "#,
             )
             .bind(id)
             .execute(&self.pool)

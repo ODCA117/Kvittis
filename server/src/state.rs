@@ -158,7 +158,7 @@ impl AppState {
                 user.friends = friends;
 
                 Ok(user)
-            },
+            }
             //TODO: Fetch the friendships here.
             None => Err(anyhow!("Failed to get user")),
         }
@@ -241,8 +241,11 @@ impl AppState {
             .iter()
             .map(|r| r.into())
             .collect();
-        if outgoing_requests.len() > 0 {
-            warn!("outgoing_requests status: {:?}", outgoing_requests[0].status);
+        if !outgoing_requests.is_empty() {
+            warn!(
+                "outgoing_requests status: {:?}",
+                outgoing_requests[0].status
+            );
         }
         Ok(outgoing_requests)
     }
@@ -259,8 +262,11 @@ impl AppState {
             .iter()
             .map(|r| r.into())
             .collect();
-        if incoming_requests.len() > 0 {
-            warn!("incoming_requests status: {:?}", incoming_requests[0].status);
+        if !incoming_requests.is_empty() {
+            warn!(
+                "incoming_requests status: {:?}",
+                incoming_requests[0].status
+            );
         }
         Ok(incoming_requests)
     }
@@ -268,22 +274,25 @@ impl AppState {
     pub async fn handle_friend_request(
         &self,
         request_id: FriendRequestId,
-        action: FriendRequestAction
+        action: FriendRequestAction,
     ) -> Result<()> {
         let guard = self.data.write().await;
-        let mut request: FriendRequestRow = guard
-            .store
-            .get_friend_request(request_id)
-            .await?
-            .into();
+        let mut request: FriendRequestRow = guard.store.get_friend_request(request_id).await?;
         match action {
             FriendRequestAction::Accept => {
                 request.status = FriendRequestState::Accepted.to_string();
                 warn!("Add friend ship");
-                guard.store.add_friendship(request.sender_id, request.receiver_id).await?;
-            },
-            FriendRequestAction::Reject => request.status = FriendRequestState::Rejected.to_string(),
-            FriendRequestAction::Cancel => request.status = FriendRequestState::Rejected.to_string(),
+                guard
+                    .store
+                    .add_friendship(request.sender_id, request.receiver_id)
+                    .await?;
+            }
+            FriendRequestAction::Reject => {
+                request.status = FriendRequestState::Rejected.to_string()
+            }
+            FriendRequestAction::Cancel => {
+                request.status = FriendRequestState::Rejected.to_string()
+            }
         }
 
         let now = Utc::now();
