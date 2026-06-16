@@ -70,6 +70,13 @@ export const expenses = writable([]);
 // Groups
 export const groups = writable([]);
 
+// Friend requests
+// Incoming friend requests (requests where the current user is the recipient)
+export const incomingFriendRequests = writable([]);
+
+// Outgoing friend requests (requests where the current user is the sender)
+export const outgoingFriendRequests = writable([]);
+
 // Loading state
 export const isLoading = writable(false);
 

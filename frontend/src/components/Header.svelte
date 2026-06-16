@@ -3,11 +3,19 @@
 
     export let user;
     export let onLogout;
+    export let onNavigate;
 </script>
 
 <header class="header">
     <h1>Kvittis</h1>
     <div class="header-controls">
+        {#if user}
+            <nav class="nav-links">
+                <button on:click={() => onNavigate('dashboard')} class="nav-link">Dashboard</button>
+                <button on:click={() => onNavigate('friends')} class="nav-link">Friends</button>
+                <button on:click={() => onNavigate('groups')} class="nav-link">Groups</button>
+            </nav>
+        {/if}
         <button
             on:click={toggleTheme}
             class="theme-toggle"
@@ -37,6 +45,25 @@
         gap: 1rem;
     }
 
+    .nav-links {
+        display: flex;
+        gap: 0.5rem;
+    }
+
+    .nav-link {
+        background: transparent;
+        border: none;
+        padding: 0.5rem 1rem;
+        cursor: pointer;
+        color: var(--text-primary, #333);
+        border-radius: 4px;
+        transition: background-color 0.2s;
+    }
+
+    .nav-link:hover {
+        background-color: var(--hover-bg, #f0f0f0);
+    }
+
     .theme-toggle {
         background: transparent;
         border: none;
@@ -53,5 +80,11 @@
 
     .theme-icon {
         display: inline-block;
+    }
+
+    .auth-status {
+        display: flex;
+        align-items: center;
+        gap: 0.5rem;
     }
 </style>

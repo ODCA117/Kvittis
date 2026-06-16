@@ -84,6 +84,19 @@ export async function listGroups(token) {
   return apiPost("/api/group", { action: "search", query: "" }, token);
 }
 
+// Friend Request API
+export async function sendFriendRequest(friendId, token) {
+  return apiPost("/api/auth_user", { action: "send_friend_request", friend_id: friendId }, token);
+}
+
+export async function getPendingFriendRequests(token) {
+  return apiPost("/api/auth_user", { action: "get_pending_friend_requests" }, token);
+}
+
+export async function handleFriendRequest(requestId, action, token) {
+  return apiPost("/api/auth_user", { action: "handle_friend_request", request_id: requestId, request_action: action }, token);
+}
+
 // Utility functions
 // Check if API response is an error
 export function isError(resp) {

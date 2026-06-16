@@ -9,6 +9,8 @@
         balances,
         expenses,
         groups,
+        incomingFriendRequests,
+        outgoingFriendRequests,
         theme,
     } from "./lib/stores.js";
     import {
@@ -23,6 +25,7 @@
     import Register from "./components/Register.svelte";
     import Dashboard from "./components/Dashboard.svelte";
     import GroupsPage from "./components/Groups.svelte";
+    import FriendsPage from "./components/Friends.svelte";
     import LoadingOverlay from "./components/LoadingOverlay.svelte";
     import Header from "./components/Header.svelte";
     import "./app.css";
@@ -73,6 +76,8 @@
         balances.set([]);
         expenses.set([]);
         groups.set([]);
+        incomingFriendRequests.set([]);
+        outgoingFriendRequests.set([]);
         currentPage = "login";
     }
 
@@ -133,7 +138,7 @@
 </svelte:head>
 
 <div class="app">
-    <Header user={userValue} onLogout={handleLogout} />
+    <Header user={userValue} onLogout={handleLogout} onNavigate={navigateTo} />
 
     <main class="main-content">
         {#if currentPage === "login"}
@@ -144,6 +149,8 @@
             <Dashboard onLogout={handleLogout} />
         {:else if currentPage === "groups"}
             <GroupsPage {navigateTo} />
+        {:else if currentPage === "friends"}
+            <FriendsPage {navigateTo} />
         {/if}
     </main>
 
