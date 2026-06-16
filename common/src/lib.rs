@@ -5,6 +5,7 @@ use std::{
     str::FromStr,
 };
 use uuid::Uuid;
+
 pub mod api;
 
 pub type UserId = Uuid;
