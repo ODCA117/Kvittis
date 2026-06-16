@@ -6,7 +6,7 @@ use async_trait::async_trait;
 use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize, Serialize};
 
-use common::{ExpenseId, FriendRequestId, GroupId, UserId};
+use common::{ExpenseId, FriendRequestId, GroupId, GroupRole, UserId};
 
 #[async_trait]
 pub trait Store: Send + Sync {
@@ -32,7 +32,8 @@ pub trait Store: Send + Sync {
     async fn get_group(&self, id: GroupId) -> Result<Option<GroupRow>>;
     async fn get_groups(&self) -> Result<Vec<GroupRow>>;
     async fn delete_group(&self, id: GroupId) -> Result<()>;
-    async fn update_group(&self, group: GroupRow) -> Result<GroupRow>;
+    async fn add_group_member(&self, user: UserId, group: GroupId) -> Result<()>;
+    async fn get_group_members(&self, group: GroupId) -> Result<Vec<GroupMember>>;
 
     // --- Expenses ---
     async fn create_expense(&self, expense: ExpenseRow) -> Result<ExpenseRow>;
@@ -92,19 +93,22 @@ pub struct FriendRequestRow {
 pub struct GroupRow {
     pub id: GroupId,
     pub name: String,
-    pub owner_id: UserId,
-    pub members: Vec<UserId>,
 }
 
 impl GroupRow {
-    pub fn new(id: GroupId, name: String, owner_id: UserId, members: Vec<UserId>) -> Self {
+    pub fn new(id: GroupId, name: String) -> Self {
         Self {
             id,
             name,
-            owner_id,
-            members,
         }
     }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct GroupMember {
+    pub group_id: GroupId,
+    pub user_id: UserId,
+    pub role: GroupRole,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

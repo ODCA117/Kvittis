@@ -10,6 +10,8 @@ use common::{ExpenseId, FriendRequestId, GroupId, UserId};
 
 use crate::db::{ExpenseRow, FriendRequestRow, GroupRow, Store, UserRow};
 
+use super::GroupMember;
+
 /// ===============================
 /// File-backed persistent state
 /// ===============================
@@ -171,13 +173,14 @@ impl Store for FileStore {
         Ok(self.state.read().await.groups.values().cloned().collect())
     }
 
-    async fn update_group(&self, group: GroupRow) -> Result<GroupRow> {
-        let mut state = self.state.write().await;
-        state.groups.insert(group.id, group.clone());
-        drop(state);
-        self.persist().await?;
-        Ok(group)
+    async fn add_group_member(&self, _user: UserId, _group: GroupId) -> Result<()> {
+        todo!();
     }
+    async fn get_group_members(&self, _group: GroupId) -> Result<Vec<GroupMember>> {
+        todo!();
+    }
+
+
 
     // -------- Expenses --------
 

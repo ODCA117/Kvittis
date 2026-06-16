@@ -282,21 +282,18 @@ pub async fn authorized_user_handler(
 // NOTE: Need to be authorized user
 pub async fn group_handler(
     State(state): State<AppState>,
+    claims: Claims,
     Json(payload): Json<GroupRequest>,
 ) -> (StatusCode, Json<ApiResponse<serde_json::Value>>) {
     match payload {
         GroupRequest::Create {
             name,
-            owner_id,
-            members,
         } => {
             debug!("Create group: name={:?}", name);
             let req = common::api::CreateGroupRequest {
                 name,
-                owner_id,
-                members,
             };
-            match state.create_group(req).await {
+            match state.create_group(claims.sub, req).await {
                 Ok(g) => {
                     let resp = CreateGroupResponse {
                         id: g.id,
@@ -316,7 +313,6 @@ pub async fn group_handler(
                     let resp = GetGroupResponse {
                         id: g.id,
                         name: g.name,
-                        owner_id: g.owner_id,
                         members: g.members,
                     };
                     json_success(StatusCode::OK, serde_json::to_value(resp).unwrap())
@@ -329,7 +325,7 @@ pub async fn group_handler(
         GroupRequest::Delete { group_id } => {
             // NOTE: Only delete groups user is member of
             debug!("Delete group: {:?}", group_id);
-            match state.delete_group(group_id).await {
+            match state.delete_group(claims.sub, group_id).await {
                 Ok(_) => json_success(
                     StatusCode::OK,
                     serde_json::json!({"status": "Group deleted"}),
@@ -348,7 +344,6 @@ pub async fn group_handler(
                         .map(|g| GetGroupResponse {
                             id: g.id,
                             name: g.name,
-                            owner_id: g.owner_id,
                             members: g.members,
                         })
                         .collect();
@@ -361,6 +356,7 @@ pub async fn group_handler(
         GroupRequest::AddMember {
             group_id,
             new_member,
+            role,
         } => {
             // NOTE: Only add if admin of group
             debug!(
@@ -370,6 +366,7 @@ pub async fn group_handler(
             let req = common::api::NewGroupMemberRequest {
                 group_id,
                 new_member,
+                role,
             };
             match state.new_group_member(req).await {
                 Ok(_) => json_success(
@@ -378,6 +375,21 @@ pub async fn group_handler(
                 ),
                 Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to add member"),
             }
+        }
+
+        GroupRequest::UpdateMember {
+            group_id,
+            member,
+            role,
+        } => {
+            json_error(StatusCode::NOT_IMPLEMENTED, "Not implemented")
+        }
+
+        GroupRequest::RemoveMember {
+            group_id,
+            member,
+        } => {
+            json_error(StatusCode::NOT_IMPLEMENTED, "Not implemented")
         }
     }
 }

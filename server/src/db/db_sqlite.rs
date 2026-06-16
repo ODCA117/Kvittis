@@ -9,7 +9,7 @@ use sqlx::{
 };
 use tracing::{debug, info, warn};
 
-use crate::db::{ExpenseRow, FriendRequestRow, GroupRow, Store, UserRow};
+use crate::db::{ExpenseRow, FriendRequestRow, GroupRow, Store, UserRow, GroupMember};
 
 pub struct SqliteStore {
     pool: SqlitePool,
@@ -441,26 +441,12 @@ impl Store for SqliteStore {
         print_sql_result(
             sqlx::query(
                 r#"
-                    INSERT INTO groups (id, name, owner_id)
-                    VALUES ($1, $2, $3)
-                "#,
-            )
-            .bind(group.id)
-            .bind(&group.name)
-            .bind(group.owner_id)
-            .execute(&self.pool)
-            .await,
-        )?;
-
-        print_sql_result(
-            sqlx::query(
-                r#"
-                    INSERT INTO group_members (group_id, user_id)
+                    INSERT INTO groups (id, name)
                     VALUES ($1, $2)
                 "#,
             )
             .bind(group.id)
-            .bind(group.owner_id)
+            .bind(&group.name)
             .execute(&self.pool)
             .await,
         )?;
@@ -469,88 +455,34 @@ impl Store for SqliteStore {
     }
 
     async fn get_group(&self, id: GroupId) -> Result<Option<GroupRow>> {
-        info!("Get Group!!!!!");
         let group = print_sql_result(
             sqlx::query(
                 r#"
-                    SELECT
-                        g.id                AS group_id,
-                        g.name              AS group_name,
-                        g.owner_id          AS group_owner,
-                        u.id                AS user_id,
-                        u.username          AS username
+                    SELECT id name
                     FROM groups g
-                    LEFT JOIN group_members gm
-                        ON g.id = gm.group_id
-                    LEFT JOIN users u
-                        ON gm.user_id = u.id
-                    WHERE g.id = $1
-                    ORDER BY g.id;
+                    WHERE id = $1
                 "#,
             )
             .bind(id)
-            .fetch_all(&self.pool)
+            .fetch_one(&self.pool)
             .await,
         )?;
 
-        let mut map = HashMap::new();
-        for r in group.iter() {
-            let id: GroupId = r.get("group_id");
-            let name: String = r.get("group_name");
-            let owner_id: UserId = r.get("group_owner");
-            let user_id: UserId = r.get("user_id");
-            let _username: String = r.get("username");
-            let g = map.entry(id).or_insert(GroupRow {
-                id,
-                name,
-                owner_id,
-                members: vec![],
-            });
-            g.members.push(user_id);
+        match group.is_empty() { 
+            true => {
+                Ok(None)
+            },
+            false => {
+                let id: GroupId = group.get("group_id");
+                let name: String = group.get("group_name");
+                Ok(Some(GroupRow { id, name }))
+            }
         }
-
-        Ok(map.into_values().next())
     }
 
     async fn get_groups(&self) -> Result<Vec<GroupRow>> {
-        let groups = print_sql_result(
-            sqlx::query(
-                r#"
-                    SELECT
-                        g.id                AS group_id,
-                        g.name              AS group_name,
-                        g.owner_id          AS group_owner,
-                        u.id                AS user_id,
-                        u.username          AS username
-                    FROM groups g
-                    LEFT JOIN group_members gm
-                        ON g.id = gm.group_id
-                    LEFT JOIN users u
-                        ON gm.user_id = u.id
-                    ORDER BY g.id;
-                "#,
-            )
-            .fetch_all(&self.pool)
-            .await,
-        )?;
-
-        let mut map = HashMap::new();
-        for r in groups.iter() {
-            let id: GroupId = r.get("group_id");
-            let name: String = r.get("group_name");
-            let owner_id: UserId = r.get("group_owner");
-            let user_id: UserId = r.get("user_id");
-            let _username: String = r.get("username");
-            let g = map.entry(id).or_insert(GroupRow {
-                id,
-                name,
-                owner_id,
-                members: vec![],
-            });
-            g.members.push(user_id);
-        }
-
-        Ok(map.values().cloned().collect::<Vec<GroupRow>>())
+        // Get groups where a specific user is a member
+        todo!();
     }
 
     async fn delete_group(&self, id: GroupId) -> Result<()> {
@@ -583,50 +515,13 @@ impl Store for SqliteStore {
         Ok(())
     }
 
-    async fn update_group(&self, group: GroupRow) -> Result<GroupRow> {
-        print_sql_result(
-            sqlx::query(
-                r#"
-                    UPDATE groups
-                    SET name = $1, owner_id = $2
-                    WHERE id = $3
-                "#,
-            )
-            .bind(&group.name)
-            .bind(group.owner_id)
-            .bind(group.id)
-            .execute(&self.pool)
-            .await,
-        )?;
+    async fn add_group_member(&self, user: UserId, group: GroupId) -> Result<()> {
+        todo!();
 
-        // Update members: remove all and add again (simpler than calculating the diff)
-        print_sql_result(
-            sqlx::query(
-                r#"
-                    DELETE FROM group_members WHERE group_id = $1
-                "#,
-            )
-            .bind(group.id)
-            .execute(&self.pool)
-            .await,
-        )?;
+    }
 
-        for member in &group.members {
-            print_sql_result(
-                sqlx::query(
-                    r#"
-                        INSERT INTO group_members (group_id, user_id)
-                        VALUES ($1, $2)
-                    "#,
-                )
-                .bind(group.id)
-                .bind(member)
-                .execute(&self.pool)
-                .await,
-            )?;
-        }
-
-        Ok(group)
+    async fn get_group_members(&self, group: GroupId) -> Result<Vec<GroupMember>> {
+        todo!();
     }
 
     // --- Expenses ---

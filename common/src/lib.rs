@@ -82,8 +82,31 @@ pub enum FriendRequestAction {
 pub struct Group {
     pub id: GroupId,
     pub name: String,
-    pub owner_id: UserId,
-    pub members: Vec<UserId>,
+    pub members: Vec<(UserId, GroupRole)>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub enum GroupRole {
+    Admin,
+    Member,
+}
+
+impl FromStr for GroupRole {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "Admin" => Ok(GroupRole::Admin),
+            "Member" => Ok(GroupRole::Member),
+            _ => Err(format!("{s} is not a valid string")),
+        }
+    }
+}
+
+impl fmt::Display for GroupRole {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{:?}", self)
+    }
 }
 
 #[derive(Clone, Debug)]

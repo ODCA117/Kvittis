@@ -5,9 +5,15 @@ Track shared expenses, settle debts, and keep everything fair — all in one pla
 
 ---
 
+## Current work
+Updating group handling
+- [ ] Make it possible to create a group. A group created will automatically add the creator 
+      as a member
+- [ ] Let users have different roles in a group. Admin, can delete the group, Member can update
+      expenses and add other members.
+- [ ] Add a last settled timestamp to be able to filter out old expenses that should not be counted
 
 ## Todo:
-- Add authentication (JWT)
 - Implement different permission levels (admin, user, group_member)
 - Group add balance summary
 - Group add easy settle to reduce number of transactions to settle a group balance.

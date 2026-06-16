@@ -1,6 +1,5 @@
 use crate::{
-    Expense, ExpenseId, FriendRequest, FriendRequestAction, FriendRequestId, Group, GroupId,
-    NewUser, PublicUser, User, UserId,
+    Expense, ExpenseId, FriendRequest, FriendRequestAction, FriendRequestId, Group, GroupId, GroupRole, NewUser, PublicUser, User, UserId
 };
 use serde::{Deserialize, Serialize};
 
@@ -54,8 +53,7 @@ pub struct CreateGroupResponse {
 pub struct GetGroupResponse {
     pub id: GroupId,
     pub name: String,
-    pub owner_id: UserId,
-    pub members: Vec<UserId>,
+    pub members: Vec<(UserId, GroupRole)>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -84,14 +82,13 @@ pub struct GetExpenseResponse {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct CreateGroupRequest {
     pub name: String,
-    pub owner_id: UserId,
-    pub members: Vec<UserId>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct NewGroupMemberRequest {
     pub group_id: GroupId,
     pub new_member: UserId,
+    pub role: GroupRole,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -147,8 +144,6 @@ pub enum AuthorizedUserRequest {
 pub enum GroupRequest {
     Create {
         name: String,
-        owner_id: UserId,
-        members: Vec<UserId>,
     },
     Get {
         group_id: GroupId,
@@ -162,7 +157,17 @@ pub enum GroupRequest {
     AddMember {
         group_id: GroupId,
         new_member: UserId,
+        role: GroupRole,
     },
+    UpdateMember {
+        group_id: GroupId,
+        member: UserId,
+        role: GroupRole
+    },
+    RemoveMember {
+        group_id: GroupId,
+        member: UserId,
+    }
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -250,7 +255,6 @@ impl From<GetGroupResponse> for Group {
         Group {
             id: value.id,
             name: value.name,
-            owner_id: value.owner_id,
             members: value.members,
         }
     }

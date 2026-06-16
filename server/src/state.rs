@@ -15,6 +15,7 @@ use common::FriendRequest;
 use common::FriendRequestAction;
 use common::FriendRequestId;
 use common::FriendRequestState;
+use common::GroupRole;
 use common::PublicUser;
 use common::api::FriendRequestResponse;
 use jsonwebtoken::TokenData;
@@ -471,21 +472,26 @@ impl AppState {
         Ok(transfers)
     }
 
-    pub async fn create_group(&self, group_req: CreateGroupRequest) -> Result<Group> {
+    pub async fn create_group(&self, user: UserId, group_req: CreateGroupRequest) -> Result<Group> {
         let guard = self.data.write().await;
-        let group = Group {
+        let group = GroupRow {
             id: Uuid::new_v4(),
             name: group_req.name,
-            owner_id: group_req.owner_id,
-            members: group_req.members,
         };
-        let stored = guard.store.create_group(group.clone().into()).await?;
-        Ok(stored.into())
+        let stored = guard.store.create_group(group).await?;
+        guard.store.add_group_member(user, stored.id).await?;
+
+        let mut group: Group = stored.into();
+        group.members.push((user, GroupRole::Admin));
+
+        Ok(group)
     }
 
-    pub async fn delete_group(&self, group_req: GroupId) -> Result<()> {
+    pub async fn delete_group(&self, user: UserId, group_id: GroupId) -> Result<()> {
         let guard = self.data.write().await;
-        guard.store.delete_group(group_req).await?;
+        let member = guard.store.get_group_members(group_id).await?;
+        member.iter().find(|&m| m.user_id.eq(&user));
+        guard.store.delete_group(group_id).await?;
         Ok(())
     }
 
@@ -516,16 +522,15 @@ impl AppState {
         Ok(groups)
     }
 
-    pub async fn new_group_member(&self, req: NewGroupMemberRequest) -> Result<Group> {
+    pub async fn new_group_member(&self, req: NewGroupMemberRequest) -> Result<()> {
         let guard = self.data.write().await;
-        let mut group = guard
+        let group = guard
             .store
             .get_group(req.group_id)
             .await?
             .ok_or_else(|| anyhow!("Group not found"))?;
-        group.members.push(req.new_member);
-        let stored = guard.store.update_group(group.clone()).await?;
-        Ok(stored.into())
+        guard.store.add_group_member(req.new_member, group.id).await?;
+        Ok(())
     }
 }
 
@@ -618,7 +623,7 @@ impl From<&FriendRequestRow> for FriendRequest {
 
 impl From<Group> for GroupRow {
     fn from(value: Group) -> Self {
-        GroupRow::new(value.id, value.name, value.owner_id, value.members)
+        GroupRow::new(value.id, value.name)
     }
 }
 
@@ -627,8 +632,7 @@ impl From<GroupRow> for Group {
         Group {
             id: value.id,
             name: value.name,
-            owner_id: value.owner_id,
-            members: value.members,
+            members: vec![],
         }
     }
 }

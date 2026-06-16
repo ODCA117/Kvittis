@@ -34,7 +34,6 @@ CREATE TABLE friend_requests (
 CREATE TABLE groups (
     id TEXT PRIMARY KEY NOT NULL,
     name TEXT NOT NULL,
-    owner_id TEXT NOT NULL,
     FOREIGN KEY (owner_id) REFERENCES users(id)
 );
 
@@ -42,6 +41,7 @@ CREATE TABLE groups (
 CREATE TABLE group_members (
     group_id TEXT NOT NULL,
     user_id TEXT NOT NULL,
+    role TEXT NOT NULL,
     PRIMARY KEY (group_id, user_id),
     FOREIGN KEY (group_id) REFERENCES groups(id),
     FOREIGN KEY (user_id) REFERENCES users(id)
