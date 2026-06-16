@@ -12,25 +12,20 @@ pub mod users;
 // Re-export all types from submodules
 
 // Auth types
-pub use auth::{
-    LoginResponse, RegisterResponse, TokenType, UnauthorizedUserRequest,
-};
+pub use auth::{LoginResponse, RegisterResponse, TokenType, UnauthorizedUserRequest};
 
 // User types
-pub use users::{
-    AuthorizedUserRequest, GetUserResponse, SearchUserResponse,
-};
+pub use users::{AuthorizedUserRequest, GetUserResponse, SearchUserResponse};
 
 // Group types
 pub use groups::{
-    CreateGroupRequest, CreateGroupResponse, GetGroupResponse, GroupRequest,
-    NewGroupMemberRequest,
+    CreateGroupRequest, CreateGroupResponse, GetGroupResponse, GroupRequest, NewGroupMemberRequest,
 };
 
 // Expense types
 pub use expenses::{
-    CreateExpenseRequest, CreateExpenseResponse, DeleteExpenseRequest,
-    ExpenseRequest, GetExpenseRequest, GetExpenseResponse,
+    CreateExpenseRequest, CreateExpenseResponse, DeleteExpenseRequest, ExpenseRequest,
+    GetExpenseRequest, GetExpenseResponse,
 };
 
 // Balance types

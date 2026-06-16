@@ -257,9 +257,7 @@ async fn test_create_group() -> anyhow::Result<()> {
         .login_user(user.username, PASSWORD.to_owned())
         .await?;
     let group_name = "create_test_group";
-    let group = auth_user
-        .create_group(group_name)
-        .await?;
+    let group = auth_user.create_group(group_name).await?;
     assert_eq!(group.name, group_name);
     let resp = auth_user.get_group(group.id).await?;
     assert_eq!(resp.name, group_name);
@@ -279,9 +277,7 @@ async fn test_delete_group() -> anyhow::Result<()> {
         .login_user(user.username, PASSWORD.to_owned())
         .await?;
     let group_name = "delete_test_group";
-    let group = auth_user
-        .create_group(group_name)
-        .await?;
+    let group = auth_user.create_group(group_name).await?;
 
     let resp = auth_user.get_group(group.id).await?;
     assert_eq!(resp.name, group_name);
@@ -307,14 +303,16 @@ async fn test_add_user_to_group() -> anyhow::Result<()> {
         .login_user(owner.username, PASSWORD.to_owned())
         .await?;
     let group_name = "add_user_to_group_test_group";
-    let group = auth_owner
-        .create_group(group_name)
-        .await?;
+    let group = auth_owner.create_group(group_name).await?;
 
     auth_owner.add_user_to_group(group.id, member.id).await?;
 
     let resp = auth_owner.get_group(group.id).await?;
-    assert!(resp.members.iter().find(|(u, _)| u.eq(&member.id)).is_some());
+    assert!(resp
+        .members
+        .iter()
+        .find(|(u, _)| u.eq(&member.id))
+        .is_some());
 
     // Cleanup
     auth_owner.delete_group(group.id).await?;
@@ -336,9 +334,7 @@ async fn test_get_group_by_name() -> anyhow::Result<()> {
         .login_user(owner.username, PASSWORD.to_owned())
         .await?;
     let group_name = "get_group_by_name_test_group";
-    let group = auth_owner
-        .create_group(group_name)
-        .await?;
+    let group = auth_owner.create_group(group_name).await?;
 
     let resp = auth_owner.search_group(group_name).await?;
     let ids: Vec<_> = resp.iter().map(|g| g.id).collect();

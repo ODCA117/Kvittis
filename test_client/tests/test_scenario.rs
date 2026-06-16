@@ -109,9 +109,7 @@ async fn tc3_user_balances_ignore_group_expenses() -> anyhow::Result<()> {
     let a = client.register_user(tc3_user_1).await?.user;
     let b = client.register_user(tc3_user_2).await?.user;
     let auth_a = client.login_user(a.username, PASSWORD.to_owned()).await?;
-    let g = auth_a
-        .create_group("tc3_group_g")
-        .await?;
+    let g = auth_a.create_group("tc3_group_g").await?;
 
     // E1: non-group expense, payer A, participants [A, B], amount 100
     let e1 = auth_a
@@ -158,9 +156,7 @@ async fn tc4_group_overview_includes_all_expenses() -> anyhow::Result<()> {
     let b = client.register_user(tc4_user_2).await?.user;
     let c = client.register_user(tc4_user_3).await?.user;
     let auth_a = client.login_user(a.username, PASSWORD.to_owned()).await?;
-    let g = auth_a
-        .create_group("tc4_group_g")
-        .await?;
+    let g = auth_a.create_group("tc4_group_g").await?;
 
     // E1: payer A, participants [A, B], amount 300 → A net +150, B net -150
     let e1 = auth_a

@@ -1,12 +1,13 @@
 use anyhow::Result;
 use common::{
-    ExpenseId, FriendRequestAction, FriendRequestId, GroupId, GroupRole, NewUser, UserId, api::{
+    api::{
         ApiResponse, AuthorizedUserRequest, BalanceEntry, BalanceRequest, CreateExpenseResponse,
         CreateGroupResponse, ExpenseRequest, FriendRequestResponse, GetExpenseResponse,
         GetGroupResponse, GetUserResponse, GroupBalance, GroupRequest, HandleFriendRequestResponse,
         LoginResponse, PendingFriendRequestResponse, RegisterResponse, SearchUserResponse,
         UnauthorizedUserRequest,
-    }
+    },
+    ExpenseId, FriendRequestAction, FriendRequestId, GroupId, GroupRole, NewUser, UserId,
 };
 use reqwest::{Client as HttpClient, Url};
 
@@ -337,10 +338,7 @@ impl AuthenticatedKvittisClient {
 
     // ========== Group Methods ==========
 
-    pub async fn create_group(
-        &self,
-        name: &str,
-    ) -> Result<CreateGroupResponse> {
+    pub async fn create_group(&self, name: &str) -> Result<CreateGroupResponse> {
         let req = GroupRequest::Create {
             name: name.to_owned(),
         };
