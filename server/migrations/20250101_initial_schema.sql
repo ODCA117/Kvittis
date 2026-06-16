@@ -33,8 +33,7 @@ CREATE TABLE friend_requests (
 -- Groups Table
 CREATE TABLE groups (
     id TEXT PRIMARY KEY NOT NULL,
-    name TEXT NOT NULL,
-    FOREIGN KEY (owner_id) REFERENCES users(id)
+    name TEXT NOT NULL
 );
 
 -- Many-to-Many: Group Members
