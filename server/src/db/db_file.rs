@@ -180,8 +180,6 @@ impl Store for FileStore {
         todo!();
     }
 
-
-
     // -------- Expenses --------
 
     async fn create_expense(&self, expense: ExpenseRow) -> Result<ExpenseRow> {

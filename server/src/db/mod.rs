@@ -97,10 +97,7 @@ pub struct GroupRow {
 
 impl GroupRow {
     pub fn new(id: GroupId, name: String) -> Self {
-        Self {
-            id,
-            name,
-        }
+        Self { id, name }
     }
 }
 

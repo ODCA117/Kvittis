@@ -529,7 +529,10 @@ impl AppState {
             .get_group(req.group_id)
             .await?
             .ok_or_else(|| anyhow!("Group not found"))?;
-        guard.store.add_group_member(req.new_member, group.id).await?;
+        guard
+            .store
+            .add_group_member(req.new_member, group.id)
+            .await?;
         Ok(())
     }
 }

@@ -9,7 +9,7 @@ use sqlx::{
 };
 use tracing::{debug, info, warn};
 
-use crate::db::{ExpenseRow, FriendRequestRow, GroupRow, Store, UserRow, GroupMember};
+use crate::db::{ExpenseRow, FriendRequestRow, GroupMember, GroupRow, Store, UserRow};
 
 pub struct SqliteStore {
     pool: SqlitePool,
@@ -468,10 +468,8 @@ impl Store for SqliteStore {
             .await,
         )?;
 
-        match group.is_empty() { 
-            true => {
-                Ok(None)
-            },
+        match group.is_empty() {
+            true => Ok(None),
             false => {
                 let id: GroupId = group.get("group_id");
                 let name: String = group.get("group_name");
@@ -515,12 +513,11 @@ impl Store for SqliteStore {
         Ok(())
     }
 
-    async fn add_group_member(&self, user: UserId, group: GroupId) -> Result<()> {
+    async fn add_group_member(&self, _user: UserId, _group: GroupId) -> Result<()> {
         todo!();
-
     }
 
-    async fn get_group_members(&self, group: GroupId) -> Result<Vec<GroupMember>> {
+    async fn get_group_members(&self, _group: GroupId) -> Result<Vec<GroupMember>> {
         todo!();
     }
 
