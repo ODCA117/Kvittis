@@ -1,6 +1,6 @@
 // These are more integration tests and scenario tests that are more complex.
 use anyhow::anyhow;
-use common::{FriendRequest, FriendRequestAction, NewUser};
+use common::{FriendRequestAction, NewUser};
 use rust_kvittis_client::UnauthClient;
 
 const BASE_URL: &str = "http://localhost:3000";
@@ -258,7 +258,7 @@ async fn test_create_group() -> anyhow::Result<()> {
         .await?;
     let group_name = "create_test_group";
     let group = auth_user
-        .create_group(group_name, user.id, vec![user.id])
+        .create_group(group_name)
         .await?;
     assert_eq!(group.name, group_name);
     let resp = auth_user.get_group(group.id).await?;
@@ -280,7 +280,7 @@ async fn test_delete_group() -> anyhow::Result<()> {
         .await?;
     let group_name = "delete_test_group";
     let group = auth_user
-        .create_group(group_name, user.id, vec![user.id])
+        .create_group(group_name)
         .await?;
 
     let resp = auth_user.get_group(group.id).await?;
@@ -308,13 +308,13 @@ async fn test_add_user_to_group() -> anyhow::Result<()> {
         .await?;
     let group_name = "add_user_to_group_test_group";
     let group = auth_owner
-        .create_group(group_name, owner.id, vec![owner.id])
+        .create_group(group_name)
         .await?;
 
     auth_owner.add_user_to_group(group.id, member.id).await?;
 
     let resp = auth_owner.get_group(group.id).await?;
-    assert!(resp.members.contains(&member.id));
+    assert!(resp.members.iter().find(|(u, _)| u.eq(&member.id)).is_some());
 
     // Cleanup
     auth_owner.delete_group(group.id).await?;
@@ -337,7 +337,7 @@ async fn test_get_group_by_name() -> anyhow::Result<()> {
         .await?;
     let group_name = "get_group_by_name_test_group";
     let group = auth_owner
-        .create_group(group_name, owner.id, vec![owner.id])
+        .create_group(group_name)
         .await?;
 
     let resp = auth_owner.search_group(group_name).await?;
