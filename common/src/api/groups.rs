@@ -1,4 +1,5 @@
 use crate::{Group, GroupId, GroupRole, UserId};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 // Response types
@@ -13,6 +14,7 @@ pub struct CreateGroupResponse {
 pub struct GetGroupResponse {
     pub id: GroupId,
     pub name: String,
+    pub last_settled: DateTime<Utc>,
     pub members: Vec<(UserId, GroupRole)>,
 }
 
@@ -71,6 +73,7 @@ impl From<GetGroupResponse> for Group {
         Group {
             id: value.id,
             name: value.name,
+            last_settled: value.last_settled,
             members: value.members,
         }
     }

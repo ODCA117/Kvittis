@@ -422,12 +422,13 @@ impl Store for SqliteStore {
         print_sql_result(
             sqlx::query(
                 r#"
-                    INSERT INTO groups (id, name)
-                    VALUES ($1, $2)
+                    INSERT INTO groups (id, name, last_settled)
+                    VALUES ($1, $2, $3)
                 "#,
             )
             .bind(group.id)
             .bind(&group.name)
+            .bind(group.last_settled)
             .execute(&self.pool)
             .await,
         )?;
@@ -439,7 +440,7 @@ impl Store for SqliteStore {
         let group: GroupRow = print_sql_result(
             sqlx::query_as(
                 r#"
-                    SELECT id, name
+                    SELECT *
                     FROM groups
                     WHERE id = $1
                 "#,

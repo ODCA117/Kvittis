@@ -43,6 +43,7 @@ pub async fn group_handler(
                     let resp = GetGroupResponse {
                         id: g.id,
                         name: g.name,
+                        last_settled: g.last_settled,
                         members: g.members,
                     };
                     json_success(StatusCode::OK, serde_json::to_value(resp).unwrap())
@@ -74,6 +75,7 @@ pub async fn group_handler(
                         .map(|g| GetGroupResponse {
                             id: g.id,
                             name: g.name,
+                            last_settled: g.last_settled,
                             members: g.members,
                         })
                         .collect();

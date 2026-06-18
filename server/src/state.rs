@@ -151,7 +151,10 @@ impl AppState {
 
     pub async fn get_user(&self, id: UserId) -> Result<User> {
         let guard = self.data.read().await;
-        let mut user: User = guard.store.get_user_by_id(id).await?
+        let mut user: User = guard
+            .store
+            .get_user_by_id(id)
+            .await?
             .ok_or_else(|| anyhow!("Failed to get user"))?
             .into();
 
@@ -472,6 +475,7 @@ impl AppState {
         let group = GroupRow {
             id: Uuid::new_v4(),
             name: group_req.name,
+            last_settled: i64::MIN,
         };
         let stored = guard.store.create_group(group).await?;
         debug!("strored: {:?}", &stored);
@@ -523,6 +527,8 @@ impl AppState {
         let group = Group {
             id: group.id,
             name: group.name,
+            last_settled: DateTime::from_timestamp_millis(group.last_settled)
+                .unwrap_or(DateTime::<Utc>::MIN_UTC),
             members,
         };
 
@@ -657,7 +663,7 @@ impl From<&FriendRequestRow> for FriendRequest {
 
 impl From<Group> for GroupRow {
     fn from(value: Group) -> Self {
-        GroupRow::new(value.id, value.name)
+        GroupRow::new(value.id, value.name, value.last_settled.timestamp_millis())
     }
 }
 
@@ -666,6 +672,8 @@ impl From<GroupRow> for Group {
         Group {
             id: value.id,
             name: value.name,
+            last_settled: DateTime::from_timestamp_millis(value.last_settled)
+                .unwrap_or(DateTime::<Utc>::MIN_UTC),
             members: vec![],
         }
     }

@@ -92,11 +92,16 @@ pub struct FriendRequestRow {
 pub struct GroupRow {
     pub id: GroupId,
     pub name: String,
+    pub last_settled: i64,
 }
 
 impl GroupRow {
-    pub fn new(id: GroupId, name: String) -> Self {
-        Self { id, name }
+    pub fn new(id: GroupId, name: String, last_settled: i64) -> Self {
+        Self {
+            id,
+            name,
+            last_settled,
+        }
     }
 }
 

@@ -83,6 +83,7 @@ pub enum FriendRequestAction {
 pub struct Group {
     pub id: GroupId,
     pub name: String,
+    pub last_settled: DateTime<Utc>,
     pub members: Vec<(UserId, GroupRole)>,
 }
 
