@@ -28,12 +28,15 @@ pub async fn group_handler(
                     };
                     json_success(StatusCode::CREATED, serde_json::to_value(resp).unwrap())
                 }
-                Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to create group"),
+                Err(e) => json_error(
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    format!("Failed to create group: {}", e).as_str(),
+                ),
             }
         }
 
         GroupRequest::Get { group_id } => {
-            // NOTE: Only get groups user is member of
+            // FIXME: Only get groups user is member of
             debug!("Get group: {:?}", group_id);
             match state.get_group(group_id).await {
                 Ok(Some(g)) => {
@@ -50,7 +53,7 @@ pub async fn group_handler(
         }
 
         GroupRequest::Delete { group_id } => {
-            // NOTE: Only delete groups user is member of
+            // FIXME: Only delete groups user is member of
             debug!("Delete group: {:?}", group_id);
             match state.delete_group(claims.sub, group_id).await {
                 Ok(_) => json_success(
@@ -62,7 +65,7 @@ pub async fn group_handler(
         }
 
         GroupRequest::Search { query } => {
-            // NOTE: Remove
+            // FIXME: Remove
             debug!("Search groups: {:?}", query);
             match state.search_groups(&query).await {
                 Ok(groups) => {
@@ -92,6 +95,7 @@ pub async fn group_handler(
             );
             let req = common::api::NewGroupMemberRequest {
                 group_id,
+                requester: claims.sub,
                 new_member,
                 role,
             };

@@ -26,6 +26,7 @@ pub struct CreateGroupRequest {
 #[derive(Serialize, Deserialize, Debug)]
 pub struct NewGroupMemberRequest {
     pub group_id: GroupId,
+    pub requester: UserId,
     pub new_member: UserId,
     pub role: GroupRole,
 }

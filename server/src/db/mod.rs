@@ -29,10 +29,10 @@ pub trait Store: Send + Sync {
 
     // --- Groups ---
     async fn create_group(&self, group: GroupRow) -> Result<GroupRow>;
-    async fn get_group(&self, id: GroupId) -> Result<Option<GroupRow>>;
+    async fn get_group(&self, id: GroupId) -> Result<GroupRow>;
     async fn get_groups(&self) -> Result<Vec<GroupRow>>;
     async fn delete_group(&self, id: GroupId) -> Result<()>;
-    async fn add_group_member(&self, user: UserId, group: GroupId) -> Result<()>;
+    async fn add_group_member(&self, user: UserId, group: GroupId, role: GroupRole) -> Result<()>;
     async fn get_group_members(&self, group: GroupId) -> Result<Vec<GroupMember>>;
 
     // --- Expenses ---
@@ -89,7 +89,7 @@ pub struct FriendRequestRow {
     pub updated_at: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
 pub struct GroupRow {
     pub id: GroupId,
     pub name: String,
@@ -105,7 +105,7 @@ impl GroupRow {
 pub struct GroupMember {
     pub group_id: GroupId,
     pub user_id: UserId,
-    pub role: GroupRole,
+    pub role: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

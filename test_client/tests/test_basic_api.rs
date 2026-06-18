@@ -1,6 +1,6 @@
 // These are more integration tests and scenario tests that are more complex.
 use anyhow::anyhow;
-use common::{FriendRequestAction, NewUser};
+use common::{FriendRequestAction, GroupRole, NewUser};
 use rust_kvittis_client::UnauthClient;
 
 const BASE_URL: &str = "http://localhost:3000";
@@ -261,6 +261,9 @@ async fn test_create_group() -> anyhow::Result<()> {
     assert_eq!(group.name, group_name);
     let resp = auth_user.get_group(group.id).await?;
     assert_eq!(resp.name, group_name);
+
+    let group = auth_user.get_group(group.id).await?;
+    assert!(group.members.contains(&(user.id, GroupRole::Admin)));
 
     // Cleanup
     auth_user.delete_group(group.id).await?;

@@ -2,7 +2,7 @@ use std::{collections::HashMap, path::Path};
 
 use anyhow::{Result, anyhow};
 use chrono::DateTime;
-use common::{ExpenseId, FriendRequestId, GroupId, UserId};
+use common::{ExpenseId, FriendRequestId, GroupId, GroupRole, UserId};
 use sqlx::{
     FromRow, Row, SqlitePool,
     sqlite::{SqlitePoolOptions, SqliteRow},
@@ -438,6 +438,7 @@ impl Store for SqliteStore {
 
     // --- Groups ---
     async fn create_group(&self, group: GroupRow) -> Result<GroupRow> {
+        debug!("group: {:?}", group);
         print_sql_result(
             sqlx::query(
                 r#"
@@ -454,12 +455,12 @@ impl Store for SqliteStore {
         Ok(group)
     }
 
-    async fn get_group(&self, id: GroupId) -> Result<Option<GroupRow>> {
-        let group = print_sql_result(
-            sqlx::query(
+    async fn get_group(&self, id: GroupId) -> Result<GroupRow> {
+        let group: GroupRow = print_sql_result(
+            sqlx::query_as(
                 r#"
-                    SELECT id name
-                    FROM groups g
+                    SELECT id, name
+                    FROM groups
                     WHERE id = $1
                 "#,
             )
@@ -468,19 +469,20 @@ impl Store for SqliteStore {
             .await,
         )?;
 
-        match group.is_empty() {
-            true => Ok(None),
-            false => {
-                let id: GroupId = group.get("group_id");
-                let name: String = group.get("group_name");
-                Ok(Some(GroupRow { id, name }))
-            }
-        }
+        Ok(group)
     }
 
     async fn get_groups(&self) -> Result<Vec<GroupRow>> {
         // Get groups where a specific user is a member
-        todo!();
+        print_sql_result(
+            sqlx::query_as(
+                r#"
+                    SELECT * FROM groups
+                "#,
+            )
+            .fetch_all(&self.pool)
+            .await,
+        )
     }
 
     async fn delete_group(&self, id: GroupId) -> Result<()> {
@@ -513,12 +515,53 @@ impl Store for SqliteStore {
         Ok(())
     }
 
-    async fn add_group_member(&self, _user: UserId, _group: GroupId) -> Result<()> {
-        todo!();
+    async fn add_group_member(&self, user: UserId, group: GroupId, role: GroupRole) -> Result<()> {
+        print_sql_result(
+            sqlx::query(
+                r#"
+                    INSERT INTO group_members ( group_id, user_id, role )
+                    VALUES ($1, $2, $3)
+                "#,
+            )
+            .bind(group)
+            .bind(user)
+            .bind(role.to_string())
+            .execute(&self.pool)
+            .await,
+        )?;
+
+        Ok(())
     }
 
-    async fn get_group_members(&self, _group: GroupId) -> Result<Vec<GroupMember>> {
-        todo!();
+    async fn get_group_members(&self, group: GroupId) -> Result<Vec<GroupMember>> {
+        let users = print_sql_result(
+            sqlx::query(
+                r#"
+                    SELECT group_id, user_id, role
+                    FROM group_members
+                    WHERE group_id = $1
+                "#,
+            )
+            .bind(group)
+            .fetch_all(&self.pool)
+            .await,
+        )?;
+
+        let members = users
+            .iter()
+            .map(|r| {
+                let group_id = r.get("group_id");
+                let user_id = r.get("user_id");
+                let role = r.get("role");
+                GroupMember {
+                    group_id,
+                    user_id,
+                    role,
+                }
+            })
+            .collect();
+
+        Ok(members)
     }
 
     // --- Expenses ---

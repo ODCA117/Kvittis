@@ -6,7 +6,7 @@ use std::path::{Path, PathBuf};
 use tokio::sync::RwLock;
 use tracing::debug;
 
-use common::{ExpenseId, FriendRequestId, GroupId, UserId};
+use common::{ExpenseId, FriendRequestId, GroupId, GroupRole, UserId};
 
 use crate::db::{ExpenseRow, FriendRequestRow, GroupRow, Store, UserRow};
 
@@ -165,15 +165,26 @@ impl Store for FileStore {
         Ok(())
     }
 
-    async fn get_group(&self, id: GroupId) -> Result<Option<GroupRow>> {
-        Ok(self.state.read().await.groups.get(&id).cloned())
+    async fn get_group(&self, id: GroupId) -> Result<GroupRow> {
+        self.state
+            .read()
+            .await
+            .groups
+            .get(&id)
+            .cloned()
+            .ok_or(anyhow::anyhow!("not found"))
     }
 
     async fn get_groups(&self) -> Result<Vec<GroupRow>> {
         Ok(self.state.read().await.groups.values().cloned().collect())
     }
 
-    async fn add_group_member(&self, _user: UserId, _group: GroupId) -> Result<()> {
+    async fn add_group_member(
+        &self,
+        _user: UserId,
+        _group: GroupId,
+        _role: GroupRole,
+    ) -> Result<()> {
         todo!();
     }
     async fn get_group_members(&self, _group: GroupId) -> Result<Vec<GroupMember>> {

@@ -86,7 +86,7 @@ pub struct Group {
     pub members: Vec<(UserId, GroupRole)>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum GroupRole {
     Admin,
     Member,

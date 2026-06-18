@@ -479,7 +479,11 @@ impl AppState {
             name: group_req.name,
         };
         let stored = guard.store.create_group(group).await?;
-        guard.store.add_group_member(user, stored.id).await?;
+        debug!("strored: {:?}", &stored);
+        guard
+            .store
+            .add_group_member(user, stored.id, GroupRole::Admin)
+            .await?;
 
         let mut group: Group = stored.into();
         group.members.push((user, GroupRole::Admin));
@@ -490,24 +494,49 @@ impl AppState {
     pub async fn delete_group(&self, user: UserId, group_id: GroupId) -> Result<()> {
         let guard = self.data.write().await;
         let member = guard.store.get_group_members(group_id).await?;
-        member.iter().find(|&m| m.user_id.eq(&user));
-        guard.store.delete_group(group_id).await?;
-        Ok(())
+        if let Some(member) = member.iter().find(|&m| m.user_id.eq(&user)) {
+            match member.role.as_str() {
+                "Admin" => {
+                    guard.store.delete_group(group_id).await?;
+                    Ok(())
+                }
+                "Member" => Err(anyhow::anyhow!("Not Allowed to delete group")),
+                _ => Err(anyhow::anyhow!("Not Allowed to delete group")),
+            }
+        } else {
+            Err(anyhow::anyhow!("Not Allowed to delete group"))
+        }
     }
 
     pub async fn get_group(&self, group_id: GroupId) -> Result<Option<Group>> {
         let guard = self.data.write().await;
-        debug!("GET GROUP!!!!");
-        guard
+        let group = guard.store.get_group(group_id).await?;
+
+        let members: Vec<(UserId, GroupRole)> = guard
             .store
-            .get_group(group_id)
-            .await
-            .map(|g| g.map(|g| g.into()))
+            .get_group_members(group.id)
+            .await?
+            .iter()
+            .map(|m| {
+                (
+                    m.user_id,
+                    GroupRole::from_str(m.role.as_str()).expect("Failed to parse role..."),
+                )
+            })
+            .collect();
+
+        let group = Group {
+            id: group.id,
+            name: group.name,
+            members,
+        };
+
+        Ok(Some(group))
     }
 
     pub async fn search_groups(&self, query: &str) -> Result<Vec<Group>> {
         let guard = self.data.write().await;
-        debug!("Search gropu");
+        debug!("Search group");
         let groups = guard.store.get_groups().await?;
         let groups: Vec<Group> = groups
             .into_iter()
@@ -524,14 +553,19 @@ impl AppState {
 
     pub async fn new_group_member(&self, req: NewGroupMemberRequest) -> Result<()> {
         let guard = self.data.write().await;
-        let group = guard
-            .store
-            .get_group(req.group_id)
-            .await?
-            .ok_or_else(|| anyhow!("Group not found"))?;
+        let group = guard.store.get_group(req.group_id).await?;
+
         guard
             .store
-            .add_group_member(req.new_member, group.id)
+            .get_group_members(group.id)
+            .await?
+            .iter()
+            .find(|&m| m.user_id == req.requester)
+            .ok_or(anyhow::anyhow!("Not allowed to add member"))?;
+
+        guard
+            .store
+            .add_group_member(req.new_member, group.id, req.role)
             .await?;
         Ok(())
     }
