@@ -53,7 +53,7 @@ CREATE TABLE expenses (
     amount INTEGER NOT NULL, -- Storing u64 as INTEGER
     description TEXT,
     group_id TEXT,
-    timestamp_ms INTEGER NOT NULL,
+    created_at INTEGER NOT NULL,
     FOREIGN KEY (payer_id) REFERENCES users(id),
     FOREIGN KEY (group_id) REFERENCES groups(id)
 );

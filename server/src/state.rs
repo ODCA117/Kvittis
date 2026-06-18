@@ -310,7 +310,7 @@ impl AppState {
             amount: expense_req.amount,
             description: expense_req.description,
             group_id: expense_req.group_id,
-            timestamp_ms: chrono::Utc::now().timestamp_millis(),
+            created_at: chrono::Utc::now(),
         };
         let stored = guard.store.create_expense(expense.into()).await?;
         Ok(stored.into())
@@ -683,7 +683,7 @@ impl From<Expense> for ExpenseRow {
             value.amount,
             value.description,
             value.group_id,
-            value.timestamp_ms,
+            value.created_at.timestamp_millis(),
         )
     }
 }
@@ -697,7 +697,8 @@ impl From<ExpenseRow> for Expense {
             amount: value.amount,
             description: value.description,
             group_id: value.group_id,
-            timestamp_ms: value.timestamp_ms,
+            created_at: DateTime::from_timestamp_millis(value.created_at)
+                .unwrap_or(DateTime::<Utc>::MAX_UTC),
         }
     }
 }

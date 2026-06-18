@@ -1,4 +1,5 @@
 use crate::{Expense, ExpenseId, GroupId, UserId};
+use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
 // Response types
@@ -11,7 +12,7 @@ pub struct CreateExpenseResponse {
     pub amount: i64,
     pub description: Option<String>,
     pub group_id: Option<GroupId>,
-    pub timestamp_ms: i64,
+    pub created_at: DateTime<Utc>,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -22,7 +23,7 @@ pub struct GetExpenseResponse {
     pub amount: i64,
     pub description: Option<String>,
     pub group_id: Option<GroupId>,
-    pub timestamp_ms: i64,
+    pub created_at: DateTime<Utc>,
 }
 
 // Internal structs used by the state/db layer
@@ -83,7 +84,7 @@ impl From<Expense> for CreateExpenseResponse {
             amount: value.amount,
             description: value.description,
             group_id: value.group_id,
-            timestamp_ms: value.timestamp_ms,
+            created_at: value.created_at,
         }
     }
 }
@@ -97,7 +98,7 @@ impl From<CreateExpenseResponse> for Expense {
             amount: value.amount,
             description: value.description,
             group_id: value.group_id,
-            timestamp_ms: value.timestamp_ms,
+            created_at: value.created_at,
         }
     }
 }
@@ -111,7 +112,7 @@ impl From<Expense> for GetExpenseResponse {
             amount: value.amount,
             description: value.description,
             group_id: value.group_id,
-            timestamp_ms: value.timestamp_ms,
+            created_at: value.created_at,
         }
     }
 }

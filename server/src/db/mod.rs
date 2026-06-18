@@ -115,7 +115,7 @@ pub struct ExpenseRow {
     pub amount: i64,
     pub description: Option<String>,
     pub group_id: Option<GroupId>,
-    pub timestamp_ms: i64,
+    pub created_at: i64,
 }
 
 impl ExpenseRow {
@@ -135,7 +135,7 @@ impl ExpenseRow {
             amount,
             description,
             group_id,
-            timestamp_ms,
+            created_at: timestamp_ms,
         }
     }
 }

@@ -118,5 +118,5 @@ pub struct Expense {
     pub amount: i64,
     pub description: Option<String>,
     pub group_id: Option<GroupId>,
-    pub timestamp_ms: i64,
+    pub created_at: DateTime<Utc>,
 }

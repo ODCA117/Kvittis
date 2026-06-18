@@ -551,7 +551,7 @@ impl Store for SqliteStore {
         print_sql_result(
             sqlx::query(
                 r#"
-                    INSERT INTO expenses (id, payer_id, amount, description, group_id, timestamp_ms)
+                    INSERT INTO expenses (id, payer_id, amount, description, group_id, created_at)
                     VALUES ($1, $2, $3, $4, $5, $6)
                 "#,
             )
@@ -560,7 +560,7 @@ impl Store for SqliteStore {
             .bind(expense.amount)
             .bind(&expense.description)
             .bind(expense.group_id)
-            .bind(expense.timestamp_ms)
+            .bind(expense.created_at)
             .execute(&self.pool)
             .await,
         )?;
@@ -625,7 +625,7 @@ impl Store for SqliteStore {
                         e.amount            AS amount,
                         e.description       AS description,
                         e.group_id          AS group_id,
-                        e.timestamp_ms      AS timestamp_ms,
+                        e.created_at        AS created_at,
                         u.id                AS user_id,
                         u.username          AS username
                     FROM expenses e
@@ -649,7 +649,7 @@ impl Store for SqliteStore {
             let amount: i64 = r.get("amount");
             let description: Option<String> = r.try_get("description").ok();
             let group_id: Option<GroupId> = r.try_get("group_id").ok();
-            let timestamp_ms: i64 = r.get("timestamp_ms");
+            let created_at: i64 = r.get("created_at");
             let user_id: UserId = r.get("user_id");
             let _username: String = r.get("username");
             let e = map.entry(id).or_insert(ExpenseRow {
@@ -659,7 +659,7 @@ impl Store for SqliteStore {
                 amount,
                 description,
                 group_id,
-                timestamp_ms,
+                created_at,
             });
             e.participants.push(user_id);
         }
@@ -677,7 +677,7 @@ impl Store for SqliteStore {
                         e.amount            AS amount,
                         e.description       AS description,
                         e.group_id          AS group_id,
-                        e.timestamp_ms      AS timestamp_ms,
+                        e.created_at        AS created_at,
                         ep2.user_id         AS user_id
                     FROM expenses e
                     LEFT JOIN expense_participants ep2
@@ -708,7 +708,7 @@ impl Store for SqliteStore {
                         e.amount            AS amount,
                         e.description       AS description,
                         e.group_id          AS group_id,
-                        e.timestamp_ms      AS timestamp_ms,
+                        e.created_at      AS created_at,
                         ep.user_id          AS user_id
                     FROM expenses e
                     LEFT JOIN expense_participants ep
@@ -734,7 +734,7 @@ fn build_expense_rows(rows: Vec<sqlx::sqlite::SqliteRow>) -> Vec<ExpenseRow> {
         let amount: i64 = r.get("amount");
         let description: Option<String> = r.try_get("description").ok();
         let group_id: Option<GroupId> = r.try_get("group_id").ok();
-        let timestamp_ms: i64 = r.get("timestamp_ms");
+        let created_at: i64 = r.get("created_at");
         let e = map.entry(id).or_insert(ExpenseRow {
             id,
             payer,
@@ -742,7 +742,7 @@ fn build_expense_rows(rows: Vec<sqlx::sqlite::SqliteRow>) -> Vec<ExpenseRow> {
             amount,
             description,
             group_id,
-            timestamp_ms,
+            created_at,
         });
         if let Ok(user_id) = r.try_get::<UserId, _>("user_id") {
             e.participants.push(user_id);
