@@ -1,7 +1,6 @@
 use std::{collections::HashMap, path::Path};
 
 use anyhow::{Result, anyhow};
-use chrono::DateTime;
 use common::{ExpenseId, FriendRequestId, GroupId, GroupRole, UserId};
 use sqlx::{
     FromRow, Row, SqlitePool,
@@ -15,31 +14,15 @@ pub struct SqliteStore {
     pool: SqlitePool,
 }
 
-// FIXME: User query_as instead?
 impl FromRow<'_, SqliteRow> for UserRow {
     fn from_row(row: &SqliteRow) -> Result<Self, sqlx::Error> {
         let id: UserId = row.get("id");
         let username: String = row.get("username");
         let email: String = row.get("email");
         let password_hash: String = row.get("password_hash");
-        let created_at: DateTime<chrono::FixedOffset> = DateTime::parse_from_rfc3339(
-            row.get::<String, _>("created_at").as_str(),
-        )
-        .map_err(|e| sqlx::Error::ColumnDecode {
-            index: "created_at".into(),
-            source: Box::new(e),
-        })?;
-        let updated_at: DateTime<chrono::FixedOffset> = DateTime::parse_from_rfc3339(
-            row.get::<String, _>("updated_at").as_str(),
-        )
-        .map_err(|e| sqlx::Error::ColumnDecode {
-            index: "updated_at".into(),
-            source: Box::new(e),
-        })?;
-        let deleted_at: Option<DateTime<chrono::FixedOffset>> = row
-            .try_get::<String, _>("deleted_at")
-            .ok()
-            .and_then(|s| DateTime::parse_from_rfc3339(s.as_str()).ok());
+        let created_at: i64 = row.get("created_at");
+        let updated_at: i64 = row.get("updated_at");
+        let deleted_at: Option<i64> = row.try_get("deleted_at").ok();
 
         Ok(UserRow {
             id,
@@ -100,9 +83,9 @@ impl Store for SqliteStore {
             .bind(user.id)
             .bind(&user.username)
             .bind(&user.password_hash)
-            .bind(user.created_at.to_rfc3339())
-            .bind(user.updated_at.to_rfc3339())
-            .bind(user.deleted_at.map(|dt| dt.to_rfc3339()))
+            .bind(user.created_at)
+            .bind(user.updated_at)
+            .bind(user.deleted_at)
             .bind(&user.email)
             .execute(&self.pool)
             .await
@@ -117,9 +100,9 @@ impl Store for SqliteStore {
             .bind(&user.username)
             .bind(&user.email)
             .bind(&user.password_hash)
-            .bind(user.created_at.to_rfc3339())
-            .bind(user.updated_at.to_rfc3339())
-            .bind(user.deleted_at.map(|dt| dt.to_rfc3339()))
+            .bind(user.created_at)
+            .bind(user.updated_at)
+            .bind(user.deleted_at)
             .execute(&self.pool)
             .await
         };
@@ -174,8 +157,7 @@ impl Store for SqliteStore {
             .get_user_by_id(id)
             .await?
             .ok_or_else(|| anyhow!("User not found"))?;
-        user.deleted_at = // TODO: Move to state
-            Some(chrono::Utc::now().with_timezone(&chrono::FixedOffset::east_opt(0).unwrap()));
+        user.deleted_at = Some(chrono::Utc::now().timestamp_millis());
 
         print_sql_result(
             sqlx::query(
@@ -185,7 +167,7 @@ impl Store for SqliteStore {
                     WHERE id = $2
             "#,
             )
-            .bind(user.deleted_at.unwrap().to_rfc3339())
+            .bind(user.deleted_at)
             .bind(user.id)
             .execute(&self.pool)
             .await,
@@ -223,8 +205,7 @@ impl Store for SqliteStore {
     // created_at does not update ever, deleted_at should not update unless deleted.
     async fn _update_user(&self, mut user: UserRow) -> Result<UserRow> {
         // TODO: Check the timezone stuff...
-        user.updated_at =
-            chrono::Utc::now().with_timezone(&chrono::FixedOffset::east_opt(0).unwrap());
+        user.updated_at = chrono::Utc::now().timestamp_millis();
         print_sql_result(
             sqlx::query(
                 r#"
@@ -239,7 +220,7 @@ impl Store for SqliteStore {
             .bind(&user.username)
             .bind(&user.email)
             .bind(&user.password_hash)
-            .bind(user.updated_at.to_rfc3339())
+            .bind(user.updated_at)
             .bind(user.id)
             .execute(&self.pool)
             .await,
@@ -788,14 +769,9 @@ fn _build_user_from_row(row: SqliteRow) -> Result<UserRow> {
     let username: String = row.get("username");
     let email: String = row.get("email");
     let password_hash: String = row.get("password_hash");
-    let created_at: DateTime<chrono::FixedOffset> =
-        DateTime::parse_from_rfc3339(row.get::<String, _>("created_at").as_str())?;
-    let updated_at: DateTime<chrono::FixedOffset> =
-        DateTime::parse_from_rfc3339(row.get::<String, _>("updated_at").as_str())?;
-    let deleted_at: Option<DateTime<chrono::FixedOffset>> = row
-        .try_get::<String, _>("deleted_at")
-        .ok()
-        .and_then(|s| DateTime::parse_from_rfc3339(s.as_str()).ok());
+    let created_at: i64 = row.get("created_at");
+    let updated_at: i64 = row.get("updated_at");
+    let deleted_at: Option<i64> = row.try_get("deleted_at").ok();
 
     Ok(UserRow {
         id,

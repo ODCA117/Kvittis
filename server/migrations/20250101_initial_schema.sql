@@ -4,9 +4,9 @@ CREATE TABLE users (
     username TEXT NOT NULL UNIQUE,
     email VARCHAR(255) NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
-    created_at TEXT NOT NULL, -- ISO 8601 format string for timestamp
-    updated_at TEXT NOT NULL, -- ISO 8601 format string for timestamp
-    deleted_at TEXT -- ISO 8601 format string for timestamp, nullable
+    created_at INTEGER NOT NULL, -- Millisecond timestamp
+    updated_at INTEGER NOT NULL, -- Millisecond timestamp
+    deleted_at INTEGER -- Millisecond timestamp
 );
 
 -- Many-to-Many: Friends
@@ -24,8 +24,8 @@ CREATE TABLE friend_requests (
     sender_id TEXT NOT NULL,
     receiver_id TEXT NOT NULL,
     status TEXT NOT NULL CHECK(status IN ('Pending', 'Accepted', 'Rejected')),
-    created_at TEXT NOT NULL,
-    updated_at TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
     FOREIGN KEY (sender_id) REFERENCES users(id),
     FOREIGN KEY (receiver_id) REFERENCES users(id)
 );

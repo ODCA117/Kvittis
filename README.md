@@ -7,9 +7,9 @@ Track shared expenses, settle debts, and keep everything fair — all in one pla
 
 ## Current work
 Updating group handling
-- [ ] Make it possible to create a group. A group created will automatically add the creator 
+- [x] Make it possible to create a group. A group created will automatically add the creator
       as a member
-- [ ] Let users have different roles in a group. Admin, can delete the group, Member can update
+- [x] Let users have different roles in a group. Admin, can delete the group, Member can update
       expenses and add other members.
 - [ ] Add a last settled timestamp to be able to filter out old expenses that should not be counted
 

@@ -3,7 +3,6 @@ pub mod db_file;
 pub mod db_sqlite;
 use anyhow::Result;
 use async_trait::async_trait;
-use chrono::{DateTime, FixedOffset};
 use serde::{Deserialize, Serialize};
 
 use common::{ExpenseId, FriendRequestId, GroupId, GroupRole, UserId};
@@ -50,9 +49,9 @@ pub struct UserRow {
     // pub friends: Vec<UserId>, Does not exist in the DB.
     pub email: String,
     pub password_hash: String,
-    pub created_at: DateTime<FixedOffset>,
-    pub updated_at: DateTime<FixedOffset>,
-    pub deleted_at: Option<DateTime<FixedOffset>>,
+    pub created_at: i64,
+    pub updated_at: i64,
+    pub deleted_at: Option<i64>,
 }
 
 impl UserRow {
@@ -62,9 +61,9 @@ impl UserRow {
         // friends: Vec<UserId>,
         email: String,
         password_hash: String,
-        created_at: DateTime<FixedOffset>,
-        updated_at: DateTime<FixedOffset>,
-        deleted_at: Option<DateTime<FixedOffset>>,
+        created_at: i64,
+        updated_at: i64,
+        deleted_at: Option<i64>,
     ) -> Self {
         Self {
             id,
@@ -85,8 +84,8 @@ pub struct FriendRequestRow {
     pub sender_id: UserId,
     pub receiver_id: UserId,
     pub status: String,
-    pub created_at: String,
-    pub updated_at: String,
+    pub created_at: i64,
+    pub updated_at: i64,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]

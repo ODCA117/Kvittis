@@ -214,15 +214,14 @@ impl AppState {
         receiver: UserId,
     ) -> Result<FriendRequestResponse> {
         let guard = self.data.write().await;
-        let now = Utc::now();
-        let date_time = now.with_timezone(&FixedOffset::east_opt(0).unwrap());
+        let date_time = Utc::now();
         let row = FriendRequestRow {
             id: Uuid::new_v4(),
             sender_id: sender,
             receiver_id: receiver,
             status: FriendRequestState::Pending.to_string(),
-            created_at: date_time.to_rfc3339(),
-            updated_at: date_time.to_rfc3339(),
+            created_at: date_time.timestamp_millis(),
+            updated_at: date_time.timestamp_millis(),
         };
         let stored = guard.store.create_friend_request(row).await?;
         Ok(FriendRequestResponse {
@@ -297,8 +296,7 @@ impl AppState {
         }
 
         let now = Utc::now();
-        let date_time = now.with_timezone(&FixedOffset::east_opt(0).unwrap());
-        request.updated_at = date_time.to_rfc3339();
+        request.updated_at = now.timestamp_millis();
         guard.store.update_friend_request(request).await?;
         Ok(())
     }
@@ -583,8 +581,8 @@ fn create_user_row_from_new_user(new_user: NewUser) -> UserRow {
             .hash_password(new_user.password.as_bytes(), &salt)
             .unwrap()
             .to_string(),
-        created_at: date_time,
-        updated_at: date_time,
+        created_at: date_time.timestamp_millis(),
+        updated_at: date_time.timestamp_millis(),
         deleted_at: None,
     }
 }
@@ -594,10 +592,10 @@ impl From<User> for UserRow {
         UserRow::new(
             value.id,
             value.username,
-            String::new(),                      // email Add this to user
-            String::new(),                      // password_hash not stored in User
-            DateTime::from(chrono::Utc::now()), // created_at Add this to User
-            DateTime::from(chrono::Utc::now()), // updated_at Add this to User
+            String::new(),                       // email Add this to user
+            String::new(),                       // password_hash not stored in User
+            value.created_at.timestamp_millis(), // created_at Add this to User
+            value.updated_at.timestamp_millis(), // updated_at Add this to User
             None,
         )
     }
@@ -610,8 +608,10 @@ impl From<UserRow> for User {
             username: user.username,
             friends: vec![], // Friends are separate from UserRow
             email: user.email,
-            created_at: user.created_at,
-            updated_at: user.updated_at,
+            created_at: DateTime::from_timestamp_millis(user.created_at)
+                .unwrap_or(DateTime::<Utc>::MAX_UTC),
+            updated_at: DateTime::from_timestamp_millis(user.updated_at)
+                .unwrap_or(DateTime::<Utc>::MAX_UTC),
         }
     }
 }
@@ -634,10 +634,10 @@ impl From<FriendRequestRow> for FriendRequest {
             // NOTE: The following can fail if the String does not contain the correct values.
             status: common::FriendRequestState::from_str(&value.status)
                 .unwrap_or(common::FriendRequestState::Pending),
-            created_at: chrono::DateTime::from_str(&value.created_at)
-                .expect("Failed to convert to datetime"),
-            updated_at: chrono::DateTime::from_str(&value.updated_at)
-                .expect("Failed to convert to datetime"),
+            created_at: DateTime::from_timestamp_millis(value.created_at)
+                .unwrap_or(DateTime::<Utc>::MAX_UTC),
+            updated_at: DateTime::from_timestamp_millis(value.updated_at)
+                .unwrap_or(DateTime::<Utc>::MAX_UTC),
         }
     }
 }
@@ -650,10 +650,10 @@ impl From<&FriendRequestRow> for FriendRequest {
             // NOTE: The following can fail if the String does not contain the correct values.
             status: common::FriendRequestState::from_str(&value.status)
                 .unwrap_or(common::FriendRequestState::Pending),
-            created_at: chrono::DateTime::from_str(&value.created_at)
-                .expect("Failed to convert to datetime"),
-            updated_at: chrono::DateTime::from_str(&value.updated_at)
-                .expect("Failed to convert to datetime"),
+            created_at: DateTime::from_timestamp_millis(value.created_at)
+                .unwrap_or(DateTime::<Utc>::MAX_UTC),
+            updated_at: DateTime::from_timestamp_millis(value.updated_at)
+                .unwrap_or(DateTime::<Utc>::MAX_UTC),
         }
     }
 }
