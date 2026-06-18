@@ -151,18 +151,15 @@ impl AppState {
 
     pub async fn get_user(&self, id: UserId) -> Result<User> {
         let guard = self.data.read().await;
-        match guard.store.get_user_by_id(id).await? {
-            Some(u) => {
-                let mut user: User = u.into();
-                let friends = guard.store.get_user_friends(id).await?;
-                debug!("friends: {:?}", friends);
-                user.friends = friends;
+        let mut user: User = guard.store.get_user_by_id(id).await?
+            .ok_or_else(|| anyhow!("Failed to get user"))?
+            .into();
 
-                Ok(user)
-            }
-            //TODO: Fetch the friendships here.
-            None => Err(anyhow!("Failed to get user")),
-        }
+        let friends = guard.store.get_user_friends(id).await?;
+        debug!("friends: {:?}", friends);
+        user.friends = friends;
+
+        Ok(user)
     }
 
     pub async fn _get_users(&self) -> Result<Vec<User>> {
