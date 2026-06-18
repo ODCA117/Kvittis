@@ -117,12 +117,6 @@ pub async fn authorized_user_handler(
             }
         }
 
-        // TODO: Update this to handle friend requests instead
-        // 1.  User1 creates friend request -> Put into new table friend_requests
-        // 2.  User2 can list all the friend_requests
-        // 3a. User2 Accepts the friend_request -> move friend_request to friends
-        // 3b. User2 Declines the friend_request -> Remove friend_request (or keep hidden?)
-        // 3c. User1 Cancel the friend_request -> Remove the friend_request
         AuthorizedUserRequest::SendFriendRequest { friend_id } => {
             // NOTE: Send friend request, need to be accepted
             debug!(

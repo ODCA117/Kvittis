@@ -54,7 +54,6 @@ pub enum AuthError {
     InvalidToken,
 }
 
-// TODO: Maybe move this?
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
     pub sub: Uuid,
