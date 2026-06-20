@@ -32,7 +32,7 @@
                         <td>${centsToDollars(expense.amount)}</td>
                         <td>{getUsername(expense.payer)}</td>
                         <td>{expense.participants.map(id => getUsername(id)).join(', ')}</td>
-                        <td>{formatDate(expense.timestamp_ms)}</td>
+                        <td>{formatDate(expense.created_at || expense.timestamp_ms)}</td>
                     </tr>
                 {/each}
             {/if}

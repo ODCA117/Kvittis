@@ -93,7 +93,9 @@
             const usersResult = await listUsers(t);
             if (!isError(usersResult)) {
                 const usersMap = new Map();
-                usersResult.user.forEach((user) => {
+                // Handle both SearchUserResponse (user array) and other formats
+                const userList = usersResult.user || usersResult;
+                userList.forEach((user) => {
                     usersMap.set(user.id, user.username);
                 });
                 allUsers.set(usersMap);
@@ -108,10 +110,13 @@
             // Load expenses
             const expensesResult = await listExpensesForUser(u.id, t);
             if (!isError(expensesResult)) {
+                // Sort by created_at (newest first)
                 expenses.set(
-                    expensesResult.sort(
-                        (a, b) => b.timestamp_ms - a.timestamp_ms,
-                    ),
+                    expensesResult.sort((a, b) => {
+                        const dateA = new Date(a.created_at || a.timestamp_ms);
+                        const dateB = new Date(b.created_at || b.timestamp_ms);
+                        return dateB - dateA;
+                    }),
                 );
             }
 

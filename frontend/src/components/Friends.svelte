@@ -37,10 +37,13 @@
         
         isLoading.set(true);
         try {
-            const result = await listUsers($token);
+            const result = await searchUsers(searchQuery, $token);
             if (!isError(result)) {
-                searchResults = result.user.filter(u => 
-                    u.username.toLowerCase().includes(searchQuery.toLowerCase()) &&
+                // Handle both SearchUserResponse (user array) and direct array
+                const userList = result.user || result;
+                searchResults = userList.filter(u => 
+                    (u.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                     u.id.toString().toLowerCase().includes(searchQuery.toLowerCase())) &&
                     u.id !== $currentUser?.id
                 );
             }

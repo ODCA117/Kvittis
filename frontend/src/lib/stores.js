@@ -70,6 +70,12 @@ export const expenses = writable([]);
 // Groups
 export const groups = writable([]);
 
+// Current group being viewed
+export const currentGroup = writable(null);
+
+// Group balances
+export const groupBalances = writable([]);
+
 // Friend requests
 // Incoming friend requests (requests where the current user is the recipient)
 export const incomingFriendRequests = writable([]);

@@ -28,7 +28,7 @@
                     <tr>
                         <td>{getUsername(entry.other)}</td>
                         <td class="{entry.amount > 0 ? 'amount-positive' : 'amount-negative'}">
-                            {entry.amount > 0 ? '+' : ''}${centsToDollars(entry.amount)}
+                            {entry.amount > 0 ? '+' : ''}{centsToDollars(entry.amount)}
                         </td>
                         <td>{entry.amount > 0 ? 'Owes you' : 'You owe'}</td>
                     </tr>

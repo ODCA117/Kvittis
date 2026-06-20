@@ -1,6 +1,6 @@
 <script>
-    import { token, currentUser, allUsers, balances, expenses, isLoading } from '../lib/stores.js';
-    import { createExpense, listUsers, getUserBalances, listExpensesForUser, isError, centsToDollars, formatDate } from '../lib/api.js';
+    import { token, currentUser, allUsers, balances, expenses, groups, isLoading } from '../lib/stores.js';
+    import { createExpense, listUsers, getUserBalances, listExpensesForUser, listGroups, isError, centsToDollars, formatDate } from '../lib/api.js';
     import UserInfo from './UserInfo.svelte';
     import NetBalance from './NetBalance.svelte';
     import BalancesTable from './BalancesTable.svelte';
@@ -17,6 +17,10 @@
 
     let expenseError = '';
     let expenseSuccess = '';
+
+    // Store values for groups
+    let groupsValue;
+    groups.subscribe(g => groupsValue = g);
 
     // Store values
     let tokenValue;
@@ -94,7 +98,7 @@
                 participants,
                 amount: amountCents,
                 description,
-                group_id: null
+                group_id: expenseGroup || null
             }, tokenValue);
 
             if (isError(result)) {
@@ -113,7 +117,11 @@
 
                 const expensesResult = await listExpensesForUser(currentUserValue.id, tokenValue);
                 if (!isError(expensesResult)) {
-                    expenses.set(expensesResult.sort((a, b) => b.timestamp_ms - a.timestamp_ms));
+                    expenses.set(expensesResult.sort((a, b) => {
+                        const dateA = new Date(a.created_at || a.timestamp_ms);
+                        const dateB = new Date(b.created_at || b.timestamp_ms);
+                        return dateB - dateA;
+                    }));
                 }
 
                 setTimeout(() => expenseSuccess = '', 3000);
@@ -176,6 +184,15 @@
                     placeholder="alice,bob,charlie"
                     required
                 >
+            </div>
+            <div class="form-group">
+                <label for="expense-group">Group (optional)</label>
+                <select id="expense-group" bind:value={expenseGroup}>
+                    <option value="">No group</option>
+                    {#each groupsValue as group}
+                        <option value={group.id}>{group.name}</option>
+                    {/each}
+                </select>
             </div>
             <button type="submit" class="btn btn-primary">Add Expense</button>
         </form>
