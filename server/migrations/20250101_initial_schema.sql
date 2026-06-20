@@ -34,7 +34,10 @@ CREATE TABLE friend_requests (
 CREATE TABLE groups (
     id TEXT PRIMARY KEY NOT NULL,
     name TEXT NOT NULL,
-    last_settled INTEGER NOT NULL
+    last_settled INTEGER NOT NULL,
+    created_at INTEGER NOT NULL,
+    updated_at INTEGER NOT NULL,
+    deleted_at INTEGER
 );
 
 -- Many-to-Many: Group Members

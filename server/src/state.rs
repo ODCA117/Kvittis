@@ -472,10 +472,14 @@ impl AppState {
 
     pub async fn create_group(&self, user: UserId, group_req: CreateGroupRequest) -> Result<Group> {
         let guard = self.data.write().await;
+        let now = Utc::now();
         let group = GroupRow {
             id: Uuid::new_v4(),
             name: group_req.name,
             last_settled: i64::MIN,
+            created_at: now.timestamp_millis(),
+            updated_at: now.timestamp_millis(),
+            deleted_at: None,
         };
         let stored = guard.store.create_group(group).await?;
         debug!("strored: {:?}", &stored);
@@ -524,12 +528,23 @@ impl AppState {
             })
             .collect();
 
+        let deleted_at = match group.deleted_at {
+            Some(ts) => {
+                Some(DateTime::from_timestamp_millis(ts).unwrap_or(DateTime::<Utc>::MAX_UTC))
+            }
+            None => None,
+        };
         let group = Group {
             id: group.id,
             name: group.name,
             last_settled: DateTime::from_timestamp_millis(group.last_settled)
                 .unwrap_or(DateTime::<Utc>::MIN_UTC),
             members,
+            created_at: DateTime::from_timestamp_millis(group.created_at)
+                .unwrap_or(DateTime::<Utc>::MIN_UTC),
+            updated_at: DateTime::from_timestamp_millis(group.updated_at)
+                .unwrap_or(DateTime::<Utc>::MIN_UTC),
+            deleted_at,
         };
 
         Ok(Some(group))
@@ -663,18 +678,41 @@ impl From<&FriendRequestRow> for FriendRequest {
 
 impl From<Group> for GroupRow {
     fn from(value: Group) -> Self {
-        GroupRow::new(value.id, value.name, value.last_settled.timestamp_millis())
+        let deleted_at = match value.deleted_at {
+            Some(ts) => Some(ts.timestamp_millis()),
+            None => None,
+                
+        };
+        GroupRow::new(
+            value.id,
+            value.name,
+            value.last_settled.timestamp_millis(),
+            value.created_at.timestamp_millis(),
+            value.updated_at.timestamp_millis(),
+            deleted_at,
+        )
     }
 }
 
 impl From<GroupRow> for Group {
     fn from(value: GroupRow) -> Self {
+        let deleted_at = match value.deleted_at {
+            Some(ts) => {
+                Some(DateTime::from_timestamp_millis(ts).unwrap_or(DateTime::<Utc>::MAX_UTC))
+            }
+            None => None,
+        };
         Group {
             id: value.id,
             name: value.name,
             last_settled: DateTime::from_timestamp_millis(value.last_settled)
                 .unwrap_or(DateTime::<Utc>::MIN_UTC),
             members: vec![],
+            created_at: DateTime::from_timestamp_millis(value.created_at)
+                .unwrap_or(DateTime::<Utc>::MIN_UTC),
+            updated_at: DateTime::from_timestamp_millis(value.created_at)
+                .unwrap_or(DateTime::<Utc>::MIN_UTC),
+            deleted_at,
         }
     }
 }

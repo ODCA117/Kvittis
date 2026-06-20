@@ -6,12 +6,11 @@ Track shared expenses, settle debts, and keep everything fair — all in one pla
 ---
 
 ## Current work
-Updating group handling
-- [x] Make it possible to create a group. A group created will automatically add the creator
-      as a member
-- [x] Let users have different roles in a group. Admin, can delete the group, Member can update
-      expenses and add other members.
-- [ ] Add a last settled timestamp to be able to filter out old expenses that should not be counted
+Updating expence handling
+- [x] Make it possible to retrieve all expenses in a group
+- [x] Make it possible to retrieve expenses in a group since it was settled.
+- [ ] Softdeletion of groups
+- [ ] expense reduce nbr transactions
 
 ## Todo:
 - Implement different permission levels (admin, user, group_member)
@@ -133,13 +132,6 @@ Two backends are selectable at startup via `--db-type`:
 | `GET` | `/balances/{user_id}` | *(not yet implemented)* User balance summary |
 | `GET` | `/group_balances/{group_id}` | *(not yet implemented)* Group balance summary |
 
-#### Server TODO
-
-- [ ] Switch default `--db-type` to `sql`
-- [ ] User authentication
-- [ ] Balance calculation endpoints
-- [ ] Backup / export
-- [ ] Remove-friend endpoint
 
 ---
 

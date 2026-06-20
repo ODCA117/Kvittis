@@ -45,6 +45,9 @@ pub async fn group_handler(
                         name: g.name,
                         last_settled: g.last_settled,
                         members: g.members,
+                        created_at: g.created_at,
+                        updated_at: g.updated_at,
+                        deleted_at: g.deleted_at,
                     };
                     json_success(StatusCode::OK, serde_json::to_value(resp).unwrap())
                 }
@@ -77,6 +80,9 @@ pub async fn group_handler(
                             name: g.name,
                             last_settled: g.last_settled,
                             members: g.members,
+                            created_at: g.created_at,
+                            updated_at: g.updated_at,
+                            deleted_at: g.deleted_at,
                         })
                         .collect();
                     json_success(StatusCode::OK, serde_json::to_value(resp).unwrap())

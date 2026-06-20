@@ -14,8 +14,11 @@ pub struct CreateGroupResponse {
 pub struct GetGroupResponse {
     pub id: GroupId,
     pub name: String,
-    pub last_settled: DateTime<Utc>,
     pub members: Vec<(UserId, GroupRole)>,
+    pub last_settled: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub deleted_at: Option<DateTime<Utc>>,
 }
 
 // Internal structs used by the state/db layer
@@ -73,8 +76,11 @@ impl From<GetGroupResponse> for Group {
         Group {
             id: value.id,
             name: value.name,
-            last_settled: value.last_settled,
             members: value.members,
+            last_settled: value.last_settled,
+            created_at: value.created_at,
+            updated_at: value.updated_at,
+            deleted_at: value.deleted_at,
         }
     }
 }

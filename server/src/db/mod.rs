@@ -93,14 +93,27 @@ pub struct GroupRow {
     pub id: GroupId,
     pub name: String,
     pub last_settled: i64,
+    pub created_at: i64,
+    pub updated_at: i64,
+    pub deleted_at: Option<i64>,
 }
 
 impl GroupRow {
-    pub fn new(id: GroupId, name: String, last_settled: i64) -> Self {
+    pub fn new(
+        id: GroupId,
+        name: String,
+        last_settled: i64,
+        created_at: i64,
+        updated_at: i64,
+        deleted_at: Option<i64>,
+    ) -> Self {
         Self {
             id,
             name,
             last_settled,
+            created_at,
+            updated_at,
+            deleted_at,
         }
     }
 }

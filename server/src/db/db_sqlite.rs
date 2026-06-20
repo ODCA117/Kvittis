@@ -55,6 +55,7 @@ impl Store for SqliteStore {
         // find if old email already exists but is deleted.
         // Allow for complete reinstatiation
         // FIXME: search for duplicate username as well!
+        // FIXME: Need to handle duplicate stuff even if user is deleted
         let old_user: Option<UserRow> = sqlx::query_as(
             r#"
                 SELECT id, username, email, password_hash, created_at, updated_at, deleted_at
@@ -418,17 +419,21 @@ impl Store for SqliteStore {
 
     // --- Groups ---
     async fn create_group(&self, group: GroupRow) -> Result<GroupRow> {
+        // FIXME: Need to handle duplicate stuff even if group is deleted
         debug!("group: {:?}", group);
         print_sql_result(
             sqlx::query(
                 r#"
-                    INSERT INTO groups (id, name, last_settled)
-                    VALUES ($1, $2, $3)
+                    INSERT INTO groups (id, name, last_settled, created_at, updated_at, deleted_at)
+                    VALUES ($1, $2, $3, $4, $5, $6)
                 "#,
             )
             .bind(group.id)
             .bind(&group.name)
             .bind(group.last_settled)
+            .bind(group.created_at)
+            .bind(group.updated_at)
+            .bind(group.deleted_at)
             .execute(&self.pool)
             .await,
         )?;
@@ -442,7 +447,7 @@ impl Store for SqliteStore {
                 r#"
                     SELECT *
                     FROM groups
-                    WHERE id = $1
+                    WHERE id = $1 AND deleted_at is NULL
                 "#,
             )
             .bind(id)
@@ -459,6 +464,7 @@ impl Store for SqliteStore {
             sqlx::query_as(
                 r#"
                     SELECT * FROM groups
+                    WHERE deleted_at is NULL
                 "#,
             )
             .fetch_all(&self.pool)
@@ -467,26 +473,18 @@ impl Store for SqliteStore {
     }
 
     async fn delete_group(&self, id: GroupId) -> Result<()> {
-        // Remove the members first due to foreign key constraint
-        print_sql_result(
-            sqlx::query(
-                r#"
-                    DELETE FROM group_members WHERE group_id = $1
-                "#,
-            )
-            .bind(id)
-            .execute(&self.pool)
-            .await,
-        )?;
-
         // Remove the group
+        let _ = self.get_group(id).await?;
+        let deleted_at = chrono::Utc::now().timestamp_millis();
         print_sql_result(
             sqlx::query(
                 r#"
-                    DELETE FROM groups
-                    WHERE id = $1
+                    UPDATE groups
+                    SET deleted_at = $1
+                    WHERE id = $2
                 "#,
             )
+            .bind(deleted_at)
             .bind(id)
             .execute(&self.pool)
             .await,
