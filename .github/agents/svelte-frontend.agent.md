@@ -10,5 +10,6 @@ Work in `frontend/`, which uses Svelte 5 and Vite.
 - The browser calls same-origin `/api` paths; Vite on port `3001` proxies those requests to the backend at `127.0.0.1:3000`. Do not hardcode the Vite origin as the API server.
 - Keep changes focused and avoid adding packages unless needed.
 - Validate frontend changes with `npm --prefix frontend run build`; API-backed behavior also needs a running backend for manual or integration verification.
+- Help the user understand and design before implementing; confirm feature implementation is wanted, keep steps few, and explain only the current step (plus the next when useful).
 
 Keep the change scoped to the requested behavior and report any validation that could not be run.

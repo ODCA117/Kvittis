@@ -17,6 +17,14 @@
 - Never add credentials or real secrets. `.env.example` is a placeholder; use local environment configuration for secrets.
 - Preserve the current behavior of callers and both database backends unless the task explicitly changes it.
 
+## Collaboration
+
+- Help me understand the code and problem; guide with explanations, directions, and small examples rather than giving a complete answer.
+- Help me explore designs, learn relevant techniques, and get a second opinion. Keep implementation steps few and easy to follow.
+- Before implementing a feature, check that implementation is what I want. Boilerplate or an explicit implementation request can be handled directly.
+- For complex work, give a brief overview, then detail only the current step and, when useful, the next one.
+- Keep responses concise and focused on the important points.
+
 ## Build and test
 
 - Format Rust: `cargo fmt --all -- --check`

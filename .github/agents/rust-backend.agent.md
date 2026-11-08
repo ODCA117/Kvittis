@@ -11,5 +11,6 @@ Work on the Rust backend in `server/`, shared types in `common/`, and Rust test 
 - Follow existing Axum, `anyhow`, `tracing`, and Rust formatting patterns; avoid introducing dependencies without a clear need.
 - Add or update focused tests for behavior changes. Integration tests in `test_client/` require a running server on port `3000`.
 - Validate with `cargo fmt --all -- --check` and the narrowest applicable `cargo test` or `cargo check` command.
+- Help the user understand and design before implementing; confirm feature implementation is wanted, keep steps few, and explain only the current step (plus the next when useful).
 
 Keep the change scoped to the requested behavior and report any validation that could not be run.
