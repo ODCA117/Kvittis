@@ -15,6 +15,11 @@ pub struct LoginResponse {
     pub token_type: TokenType,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct LogoutResponse {
+    pub msg: String,
+}
+
 // Request enums
 
 #[derive(Serialize, Deserialize, Debug, Clone)]

@@ -5,12 +5,13 @@ use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use tokio::sync::RwLock;
 use tracing::debug;
+use uuid::Uuid;
 
 use common::{ExpenseId, FriendRequestId, GroupId, GroupRole, UserId};
 
-use crate::db::{ExpenseRow, FriendRequestRow, GroupRow, Store, UserRow};
-
-use super::GroupMember;
+use crate::db::{
+    AccountSessionRow, ExpenseRow, FriendRequestRow, GroupMember, GroupRow, Store, UserRow,
+};
 
 /// ===============================
 /// File-backed persistent state
@@ -147,6 +148,23 @@ impl Store for FileStore {
     async fn remove_friendship(&self, _user: UserId) -> Result<()> {
         todo!()
     }
+
+    async fn add_account_session(&self, _session: AccountSessionRow) -> Result<()> {
+        todo!()
+    }
+
+    async fn remove_account_session(&self, _id: Uuid) -> Result<()> {
+        todo!()
+    }
+
+    async fn revoke_account_session(&self, _id: Uuid, _revoked_at: i64) -> Result<()> {
+        todo!()
+    }
+
+    async fn get_old_account_sessions(&self, _time: i64) -> Result<Vec<Uuid>> {
+        todo!()
+    }
+
     // -------- Groups --------
 
     async fn create_group(&self, group: GroupRow) -> Result<GroupRow> {

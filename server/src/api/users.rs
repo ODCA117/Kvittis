@@ -6,9 +6,9 @@ use common::api::{
     LoginResponse, PendingFriendRequestResponse, RegisterResponse, SearchUserResponse,
     UnauthorizedUserRequest,
 };
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
-use super::auth::{json_error, json_not_implemented, json_success};
+use super::auth::{json_error, json_success};
 use crate::api::Claims;
 use crate::state::AppState;
 
@@ -62,10 +62,13 @@ pub async fn authorized_user_handler(
     Json(payload): Json<AuthorizedUserRequest>,
 ) -> (StatusCode, Json<ApiResponse<serde_json::Value>>) {
     match payload {
-        AuthorizedUserRequest::Logout => {
-            warn!("Do not really know how to make this work yet");
-            json_not_implemented()
-        }
+        AuthorizedUserRequest::Logout => match state.logout_user(claims).await {
+            Ok(_) => json_success(
+                StatusCode::OK,
+                serde_json::to_value("Logged out user: ").unwrap(),
+            ),
+            Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to logout"),
+        },
 
         AuthorizedUserRequest::Get => {
             // NOTE: Only get information if logged in user (or admin)

@@ -6,6 +6,7 @@ use async_trait::async_trait;
 use serde::{Deserialize, Serialize};
 
 use common::{ExpenseId, FriendRequestId, GroupId, GroupRole, UserId};
+use uuid::Uuid;
 
 #[async_trait]
 pub trait Store: Send + Sync {
@@ -25,6 +26,10 @@ pub trait Store: Send + Sync {
     async fn delete_friend_requests_from_user(&self, user: UserId) -> Result<()>;
     async fn add_friendship(&self, user1: UserId, user2: UserId) -> Result<()>;
     async fn remove_friendship(&self, user: UserId) -> Result<()>;
+    async fn add_account_session(&self, session: AccountSessionRow) -> Result<()>;
+    async fn remove_account_session(&self, id: Uuid) -> Result<()>;
+    async fn revoke_account_session(&self, id: Uuid, revoked_at: i64) -> Result<()>;
+    async fn get_old_account_sessions(&self, time: i64) -> Result<Vec<Uuid>>;
 
     // --- Groups ---
     async fn create_group(&self, group: GroupRow) -> Result<GroupRow>;
@@ -74,6 +79,33 @@ impl UserRow {
             created_at,
             updated_at,
             deleted_at,
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, sqlx::FromRow)]
+pub struct AccountSessionRow {
+    pub id: Uuid,
+    pub user_id: UserId,
+    pub created_at: i64,
+    pub expires_at: i64,
+    pub revoked_at: Option<i64>,
+}
+
+impl AccountSessionRow {
+    pub fn new(
+        id: Uuid,
+        user_id: UserId,
+        created_at: i64,
+        expires_at: i64,
+        revoked_at: Option<i64>,
+    ) -> Self {
+        Self {
+            id,
+            user_id,
+            created_at,
+            expires_at,
+            revoked_at,
         }
     }
 }

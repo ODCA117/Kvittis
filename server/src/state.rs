@@ -24,6 +24,7 @@ use tokio::sync::RwLock;
 use tracing::{debug, warn};
 use uuid::Uuid;
 
+use crate::account_session::AccountSession;
 use crate::api::Claims;
 use crate::db::FriendRequestRow;
 use crate::db::{ExpenseRow, GroupRow, Store, UserRow};
@@ -111,7 +112,7 @@ impl AppState {
         username: String,
         password: String,
     ) -> Result<(User, String, TokenType)> {
-        let guard = self.data.read().await;
+        let guard = self.data.write().await;
         let user = guard
             .store
             .get_user_by_name(username)
@@ -120,33 +121,45 @@ impl AppState {
 
         let parsed_hash =
             PasswordHash::new(&user.password_hash).map_err(|_| anyhow!("Authentication failed"))?;
-        debug!("Password, hash:{:?}", parsed_hash);
-        let new_hash = Argon2::default()
-            .hash_password(password.as_bytes(), parsed_hash.salt.unwrap())
-            .map_err(|_| anyhow!("failed to authenticate"))?
-            .to_string();
-        let new_parsed_hash =
-            PasswordHash::new(&new_hash).map_err(|_| anyhow!("Authentication failed"))?;
-
-        // FIXME: Seem to get the wrong hash for some reason...
-        debug!("new Passowrd hash: {:?}", new_parsed_hash);
+        // debug!("Password, hash:{:?}", parsed_hash);
+        // let new_hash = Argon2::default()
+        //     .hash_password(password.as_bytes(), parsed_hash.salt.unwrap())
+        //     .map_err(|_| anyhow!("failed to authenticate"))?
+        //     .to_string();
+        // let new_parsed_hash =
+        //     PasswordHash::new(&new_hash).map_err(|_| anyhow!("Authentication failed"))?;
+        // debug!("new Passowrd hash: {:?}", new_parsed_hash);
 
         Argon2::default()
             .verify_password(password.as_bytes(), &parsed_hash)
             .map_err(|_| anyhow!("Authentication failed"))?;
 
-        let now =
-            Utc::now() + TimeDelta::try_hours(24).expect("Should fit 24 hours in the TimeDelta");
+        let created = Utc::now();
+        let expires =
+            created + TimeDelta::try_hours(24).expect("Should fit 24 hours in the TimeDelta");
+        let acc_session = AccountSession::new(user.id, created, expires);
         let claims = Claims {
             sub: user.id,
+            sid: acc_session.get_id(),
             app: "Kvittis".to_owned(),
-            exp: now.timestamp() as usize,
+            exp: expires.timestamp() as usize,
         };
 
+        guard.store.add_account_session(acc_session.into()).await?;
+
         let token = jsonwebtoken::encode(&Header::default(), &claims, &KEYS.encoding)?;
-        debug!("token: {:?}", token);
+        // debug!("token: {:?}", token);
 
         Ok((user.into(), token, TokenType::Bearer))
+    }
+
+    pub async fn logout_user(&self, claims: Claims) -> Result<()> {
+        let guard = self.data.write().await;
+        guard
+            .store
+            .revoke_account_session(claims.sid, Utc::now().timestamp_millis())
+            .await?;
+        Ok(())
     }
 
     pub async fn get_user(&self, id: UserId) -> Result<User> {
@@ -528,12 +541,7 @@ impl AppState {
             })
             .collect();
 
-        let deleted_at = match group.deleted_at {
-            Some(ts) => {
-                Some(DateTime::from_timestamp_millis(ts).unwrap_or(DateTime::<Utc>::MAX_UTC))
-            }
-            None => None,
-        };
+        let deleted_at = group.deleted_at.map(|ts| DateTime::from_timestamp_millis(ts).unwrap_or(DateTime::<Utc>::MAX_UTC));
         let group = Group {
             id: group.id,
             name: group.name,
@@ -583,6 +591,16 @@ impl AppState {
             .store
             .add_group_member(req.new_member, group.id, req.role)
             .await?;
+        Ok(())
+    }
+
+    pub async fn cleanup_account_sessions(&self) -> Result<()> {
+        let guard = self.data.write().await;
+        let now = Utc::now().timestamp_millis();
+        let sessions = guard.store.get_old_account_sessions(now).await?;
+        for s in sessions {
+            guard.store.remove_account_session(s).await?;
+        }
         Ok(())
     }
 }
@@ -678,11 +696,7 @@ impl From<&FriendRequestRow> for FriendRequest {
 
 impl From<Group> for GroupRow {
     fn from(value: Group) -> Self {
-        let deleted_at = match value.deleted_at {
-            Some(ts) => Some(ts.timestamp_millis()),
-            None => None,
-                
-        };
+        let deleted_at = value.deleted_at.map(|ts| ts.timestamp_millis());
         GroupRow::new(
             value.id,
             value.name,
@@ -696,12 +710,7 @@ impl From<Group> for GroupRow {
 
 impl From<GroupRow> for Group {
     fn from(value: GroupRow) -> Self {
-        let deleted_at = match value.deleted_at {
-            Some(ts) => {
-                Some(DateTime::from_timestamp_millis(ts).unwrap_or(DateTime::<Utc>::MAX_UTC))
-            }
-            None => None,
-        };
+        let deleted_at = value.deleted_at.map(|ts| DateTime::from_timestamp_millis(ts).unwrap_or(DateTime::<Utc>::MAX_UTC));
         Group {
             id: value.id,
             name: value.name,

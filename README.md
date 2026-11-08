@@ -11,6 +11,8 @@ Track shared expenses, settle debts, and keep everything fair — all in one pla
   time-bounded queries, and settlement.
   The design includes a code-verified baseline; the API overview below is
   historical and does not describe the current action-based routes.
+- [ ] [Account sessions and logout](docs/account-sessions.md) - server/common implementation plan;
+  frontend integration is pending.
 
 Updating expence handling
 - [x] Make it possible to retrieve all expenses in a group

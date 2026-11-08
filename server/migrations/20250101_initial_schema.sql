@@ -18,6 +18,15 @@ CREATE TABLE friendships (
     FOREIGN KEY (user2_id) REFERENCES users(id)
 );
 
+CREATE TABLE account_sessions (
+    id TEXT PRIMARY KEY NOT NULL,
+    user_id TEXT NOT NULL,
+    created_at INTEGER NOT NULL,
+    expires_at INTEGER NOT NULL,
+    revoked_at INTEGER
+    FOREIGN KEY (user_id) REFERENCES users(id),
+);
+
 -- Friend Requests
 CREATE TABLE friend_requests (
     id TEXT PRIMARY KEY NOT NULL,
