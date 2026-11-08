@@ -6,9 +6,16 @@ Track shared expenses, settle debts, and keep everything fair — all in one pla
 ---
 
 ## Current work
+- [ ] **In progress:** [Server redesign](docs/server-design.md) - session-backed
+  temporary groups with expiry cleanup, authenticated history, access control,
+  time-bounded queries, and settlement.
+  The design includes a code-verified baseline; the API overview below is
+  historical and does not describe the current action-based routes.
+
 Updating expence handling
 - [x] Make it possible to retrieve all expenses in a group
-- [x] Make it possible to retrieve expenses in a group since it was settled.
+- [ ] Make it possible to retrieve expenses in a group since it was settled
+  (not implemented in the current queries; see the server design).
 - [ ] Softdeletion of groups
 - [ ] expense reduce nbr transactions
 
