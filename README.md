@@ -28,7 +28,7 @@ The project is a Cargo workspace containing three crates:
 | `server` | `server/` | Axum HTTP server — handles all business logic and persistence |
 | `test_client` | `test_client/` | Integration test library and seed binary |
 
-> **Frontend** — planned for a future iteration. See [Client](#client) below.
+> **Frontend** — a Svelte app in `frontend/`. See [Frontend](#frontend) below.
 
 ---
 
@@ -227,9 +227,27 @@ cargo run -p test_client --bin test_setup_client
 
 ---
 
-## Client
+## Frontend
 
-The frontend client is planned for a future iteration.
+The frontend is a Svelte app powered by Vite. You need Node.js and npm installed.
+
+To run it locally, install its dependencies and start the development server:
+
+```bash
+cd frontend
+npm ci
+npm run dev
+```
+
+Open [http://localhost:3001](http://localhost:3001). Vite serves the frontend on port `3001` and proxies `/api` requests to the backend at `http://127.0.0.1:3000`.
+
+To use the app with the backend, start the server separately from the repository root. The server defaults to port `3000`, which matches the Vite proxy:
+
+```bash
+RUST_LOG=info cargo run -p server -- --db-type sql --data-dir ./data
+```
+
+If you only want to work on the frontend UI, the backend is not required, but API-backed features will not work.
 
 ### TODO
 
