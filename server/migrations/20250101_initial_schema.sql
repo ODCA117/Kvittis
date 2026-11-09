@@ -23,8 +23,8 @@ CREATE TABLE account_sessions (
     user_id TEXT NOT NULL,
     created_at INTEGER NOT NULL,
     expires_at INTEGER NOT NULL,
-    revoked_at INTEGER
-    FOREIGN KEY (user_id) REFERENCES users(id),
+    revoked_at INTEGER,
+    FOREIGN KEY (user_id) REFERENCES users(id)
 );
 
 -- Friend Requests

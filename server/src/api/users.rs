@@ -1,6 +1,7 @@
 // User-related API handlers
 
 use axum::{Json, extract::State, http::StatusCode};
+use common::api::auth::LogoutResponse;
 use common::api::{
     ApiResponse, AuthorizedUserRequest, GetUserResponse, HandleFriendRequestResponse,
     LoginResponse, PendingFriendRequestResponse, RegisterResponse, SearchUserResponse,
@@ -63,10 +64,12 @@ pub async fn authorized_user_handler(
 ) -> (StatusCode, Json<ApiResponse<serde_json::Value>>) {
     match payload {
         AuthorizedUserRequest::Logout => match state.logout_user(claims).await {
-            Ok(_) => json_success(
-                StatusCode::OK,
-                serde_json::to_value("Logged out user: ").unwrap(),
-            ),
+            Ok(_) => {
+                let resp = LogoutResponse {
+                    msg: "Logged out user".to_string(),
+                };
+                json_success(StatusCode::OK, serde_json::to_value(resp).unwrap())
+            }
             Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to logout"),
         },
 

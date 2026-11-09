@@ -1,7 +1,7 @@
 # Account sessions and logout
 
 **Status: Server/common implementation in progress; stored-session validation is
-implemented. Next: fix the SQLite migration (see [review TODOs](../SECURITY-REVIEW.md)).
+implemented. Next: bound cleanup batches (see [review TODOs](../SECURITY-REVIEW.md)).
 Frontend integration is pending.**
 
 ## Behavior
@@ -42,8 +42,10 @@ Extend `Store` with create/get session, revoke owned session, revoke all user se
 and bounded expired-session cleanup operations. Revocation records the first revocation time.
 Add an atomic account-deletion operation that also revokes its sessions.
 
-- SQLite: add a new migration with session primary key, user foreign key, and expiry/user indexes.
-  Use transactions for account deletion/revocation; do not edit the initial migration.
+- SQLite: keep the session table in the initial migration while undeployed;
+  stores will be reset when it changes. Use new migrations after deployment.
+  Include session primary key, user foreign key, and expiry/user indexes.
+  Use transactions for account deletion/revocation.
 - JSON: add a session map with a serde default so older files load with no sessions.
   Persist changes atomically before success; failed writes must not publish mutated state.
   Active-account checks must reject `deleted_at` rows consistently with SQLite.

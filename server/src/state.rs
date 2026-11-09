@@ -99,7 +99,11 @@ impl AppState {
         }
 
         let guard = self.data.read().await;
-        let acc_session: AccountSession = guard.store.get_account_session(token_data.claims.sid).await?.into();
+        let acc_session: AccountSession = guard
+            .store
+            .get_account_session(token_data.claims.sid)
+            .await?
+            .into();
         if !acc_session.is_valid(token_data.claims.sub) {
             anyhow::bail!("Invalid Token");
         }
@@ -108,7 +112,8 @@ impl AppState {
             .store
             .get_user_by_id(token_data.claims.sub)
             .await?
-            .is_none() {
+            .is_none()
+        {
             anyhow::bail!("Invalid Token");
         }
 
@@ -559,7 +564,9 @@ impl AppState {
             })
             .collect();
 
-        let deleted_at = group.deleted_at.map(|ts| DateTime::from_timestamp_millis(ts).unwrap_or(DateTime::<Utc>::MAX_UTC));
+        let deleted_at = group
+            .deleted_at
+            .map(|ts| DateTime::from_timestamp_millis(ts).unwrap_or(DateTime::<Utc>::MAX_UTC));
         let group = Group {
             id: group.id,
             name: group.name,
@@ -728,7 +735,9 @@ impl From<Group> for GroupRow {
 
 impl From<GroupRow> for Group {
     fn from(value: GroupRow) -> Self {
-        let deleted_at = value.deleted_at.map(|ts| DateTime::from_timestamp_millis(ts).unwrap_or(DateTime::<Utc>::MAX_UTC));
+        let deleted_at = value
+            .deleted_at
+            .map(|ts| DateTime::from_timestamp_millis(ts).unwrap_or(DateTime::<Utc>::MAX_UTC));
         Group {
             id: value.id,
             name: value.name,

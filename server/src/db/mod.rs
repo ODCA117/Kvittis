@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use common::{ExpenseId, FriendRequestId, GroupId, GroupRole, UserId};
 use uuid::Uuid;
 
+#[allow(clippy::double_must_use)]
 #[async_trait]
 pub trait Store: Send + Sync {
     // --- Users ---

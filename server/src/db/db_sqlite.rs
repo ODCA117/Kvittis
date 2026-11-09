@@ -450,7 +450,6 @@ impl Store for SqliteStore {
             .fetch_one(&self.pool)
             .await,
         )
-
     }
 
     async fn remove_account_session(&self, id: Uuid) -> Result<()> {

@@ -38,11 +38,7 @@ impl AccountSession {
     }
 
     pub fn is_valid(&self, user_id: Uuid) -> bool {
-        if self.is_revoked() || self.is_expired() || self.user_id != user_id {
-            false
-        } else {
-            true
-        }
+        !(self.is_revoked() || self.is_expired() || self.user_id != user_id)
     }
 }
 
