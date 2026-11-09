@@ -27,6 +27,7 @@ pub trait Store: Send + Sync {
     async fn add_friendship(&self, user1: UserId, user2: UserId) -> Result<()>;
     async fn remove_friendship(&self, user: UserId) -> Result<()>;
     async fn add_account_session(&self, session: AccountSessionRow) -> Result<()>;
+    async fn get_account_session(&self, id: Uuid) -> Result<AccountSessionRow>;
     async fn remove_account_session(&self, id: Uuid) -> Result<()>;
     async fn revoke_account_session(&self, id: Uuid, revoked_at: i64) -> Result<()>;
     async fn get_old_account_sessions(&self, time: i64) -> Result<Vec<Uuid>>;

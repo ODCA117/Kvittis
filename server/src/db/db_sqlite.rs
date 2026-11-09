@@ -439,6 +439,20 @@ impl Store for SqliteStore {
         Ok(())
     }
 
+    async fn get_account_session(&self, id: Uuid) -> Result<AccountSessionRow> {
+        print_sql_result(
+            sqlx::query_as(
+                r#"
+                    SELECT * FROM account_sessions WHERE id = $1
+                "#,
+            )
+            .bind(id)
+            .fetch_one(&self.pool)
+            .await,
+        )
+
+    }
+
     async fn remove_account_session(&self, id: Uuid) -> Result<()> {
         print_sql_result(
             sqlx::query(

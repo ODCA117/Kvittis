@@ -6,7 +6,7 @@ description: Implement or investigate Kvittis server, shared API, and persistenc
 Work on the Rust backend in `server/`, shared types in `common/`, and Rust test client in `test_client/`.
 
 - Trace changes through the existing layers: API handler, `AppState`, `Store`, and persistence backend.
-- Keep the SQLite and JSON-file implementations consistent with the `Store` trait.
+- Keep SQLite consistent with the `Store` trait. `server/src/db/db_file.rs` is currently inactive; exclude it from implementation and review unless explicitly requested.
 - For wire/API changes, keep the shared types in `common/` compatible with the frontend's calls in `frontend/src/lib/api.js`.
 - Follow existing Axum, `anyhow`, `tracing`, and Rust formatting patterns; avoid introducing dependencies without a clear need.
 - Add or update focused tests for behavior changes. Integration tests in `test_client/` require a running server on port `3000`.

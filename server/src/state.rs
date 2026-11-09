@@ -94,6 +94,24 @@ impl AppState {
             jsonwebtoken::decode::<Claims>(bearer.token(), &KEYS.decoding, &Validation::default())
                 .map_err(|_| anyhow!("Invalid Token"))?;
 
+        if !token_data.claims.app.eq("Kvittis") {
+            anyhow::bail!("Invalid Token");
+        }
+
+        let guard = self.data.read().await;
+        let acc_session: AccountSession = guard.store.get_account_session(token_data.claims.sid).await?.into();
+        if !acc_session.is_valid(token_data.claims.sub) {
+            anyhow::bail!("Invalid Token");
+        }
+
+        if guard
+            .store
+            .get_user_by_id(token_data.claims.sub)
+            .await?
+            .is_none() {
+            anyhow::bail!("Invalid Token");
+        }
+
         Ok(token_data)
     }
 

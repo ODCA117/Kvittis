@@ -28,6 +28,22 @@ impl AccountSession {
     pub fn get_id(&self) -> AccountSessionId {
         self.id
     }
+
+    pub fn is_revoked(&self) -> bool {
+        self.revoked_at.is_some()
+    }
+
+    pub fn is_expired(&self) -> bool {
+        self.expires_at <= Utc::now()
+    }
+
+    pub fn is_valid(&self, user_id: Uuid) -> bool {
+        if self.is_revoked() || self.is_expired() || self.user_id != user_id {
+            false
+        } else {
+            true
+        }
+    }
 }
 
 impl From<AccountSession> for AccountSessionRow {

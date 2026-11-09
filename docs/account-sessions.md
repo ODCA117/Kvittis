@@ -1,6 +1,8 @@
 # Account sessions and logout
 
-**Status: Implementation plan. Server/common and frontend work are not implemented.**
+**Status: Server/common implementation in progress; stored-session validation is
+implemented. Next: fix the SQLite migration (see [review TODOs](../SECURITY-REVIEW.md)).
+Frontend integration is pending.**
 
 ## Behavior
 

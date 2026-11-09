@@ -165,6 +165,10 @@ impl Store for FileStore {
         todo!()
     }
 
+    async fn get_account_session(&self, _id: Uuid) -> Result<AccountSessionRow> {
+        todo!()
+    }
+
     // -------- Groups --------
 
     async fn create_group(&self, group: GroupRow) -> Result<GroupRow> {
