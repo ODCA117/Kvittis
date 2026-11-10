@@ -21,12 +21,6 @@ Updating expence handling
 - [ ] Softdeletion of groups
 - [ ] expense reduce nbr transactions
 
-## Todo:
-- Implement different permission levels (admin, user, group_member)
-- Group add balance summary
-- Group add easy settle to reduce number of transactions to settle a group balance.
-- Add email handler? (otherwise remove email)
-
 ## Workspace overview
 
 The project is a Cargo workspace containing three crates:
@@ -258,12 +252,3 @@ RUST_LOG=info cargo run -p server -- --db-type sql --data-dir ./data
 
 If you only want to work on the frontend UI, the backend is not required, but API-backed features will not work.
 
-### TODO
-
-- [ ] Define architecture
-- [ ] Minimized UI
-- [ ] Login / authentication
-- [ ] Create / Edit / Remove expenses
-- [ ] View and list expenses
-- [ ] Friends list and add friend
-- [ ] Search users
