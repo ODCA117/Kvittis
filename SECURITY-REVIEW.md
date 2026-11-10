@@ -1,6 +1,6 @@
 # Account session review
 
-Reviewed: 2026-11-09
+Reviewed: 2026-11-10
 
 **Work in progress: fix the TODOs below before considering this feature ready.**
 See [the implementation plan](docs/account-sessions.md) for the broader feature scope.
@@ -11,7 +11,7 @@ See [the implementation plan](docs/account-sessions.md) for the broader feature 
   lookup rejects missing rows; validation rejects revoked, expired (including
   the expiry boundary), or subject-mismatched sessions and missing/deleted users.
   The expected app claim is checked. Storage failures do not bypass validation.
-  Confirmed by source review; end-to-end authentication tests remain pending.
+  Confirmed by source review; login/logout HTTP regression tests now also pass.
 - [x] **Fix the SQLite migration syntax.** The initial migration runs successfully
   in an isolated fresh SQLite database. Keeping the session table in this file
   is accepted while undeployed; stores will be reset when the migration changes.
@@ -20,6 +20,11 @@ See [the implementation plan](docs/account-sessions.md) for the broader feature 
 - [x] **Run formatting and validation for the current changes.** Formatting,
   workspace compilation, and server Clippy checks pass. The existing
   common/server test command passes but runs zero tests.
+- [x] **Add login/logout HTTP tests.** `test_client/tests/test_account_sessions.rs`
+  covers successful login, wrong-password rejection, typed logout responses,
+  copied-token rejection after logout, repeated logout rejection, independent
+  logins, logging in again without reviving an old token, and rejection after
+  account deletion. Verified against an isolated SQLite server.
 
 The original finding that logout revocation was ignored is addressed.
 `db_file.rs` is inactive and excluded from implementation and review.
@@ -32,9 +37,8 @@ The original finding that logout revocation was ignored is addressed.
 
 ## Remaining tasks
 
-- [ ] **Add focused session tests.** Cover login persistence, logout rejecting a
-  copied token, independent device sessions, missing/expired/mismatched sessions,
-  deleted users, and cleanup with SQLite.
+- [ ] **Add remaining session tests.** Cover persistence across restart,
+  missing/expired/mismatched sessions, and cleanup with SQLite.
 - [ ] **Repeat validation after the remaining fixes.** Include focused tests and
   a running-server login/logout check.
 
@@ -55,6 +59,8 @@ The original finding that logout revocation was ignored is addressed.
   accessibility warnings.
 - Initial migration executed in isolated in-memory SQLite: passed after the
   comma fixes.
+- `cargo test -p test_client --test test_account_sessions`: two tests passed
+  against an isolated SQLite server. Requires a running SQLite server at
+  `http://localhost:3000`; set `KVITTIS_TEST_URL` to use another address.
 
-No end-to-end login/logout or running-server integration test was performed.
 The fixed lock deadlock and millisecond conversions were confirmed by inspection.
