@@ -865,7 +865,8 @@ async fn test_group_balances_basic() -> anyhow::Result<()> {
 
 #[tokio::test]
 async fn test_group_balances_with_multiple_expenses() -> anyhow::Result<()> {
-    let client = UnauthClient::new(BASE_URL)?;
+    let base_url = std::env::var("KVITTIS_TEST_URL").unwrap_or_else(|_| BASE_URL.to_owned());
+    let client = UnauthClient::new(&base_url)?;
     let new_user_payer1 = create_new_user("test_group_multi_payer1".to_owned());
     let new_user_payer2 = create_new_user("test_group_multi_payer2".to_owned());
     let new_user_member = create_new_user("test_group_multi_member".to_owned());
@@ -898,7 +899,7 @@ async fn test_group_balances_with_multiple_expenses() -> anyhow::Result<()> {
         )
         .await?;
 
-    // Payer2 pays 200 for all three
+    // Payer2 pays 201 for all three
     let auth_payer2 = client
         .login_user(payer2.username, PASSWORD.to_owned())
         .await?;
@@ -906,7 +907,7 @@ async fn test_group_balances_with_multiple_expenses() -> anyhow::Result<()> {
         .create_expense(
             payer2.id,
             vec![payer1.id, payer2.id, member.id],
-            200,
+            201,
             Some("Group expense 2".to_string()),
             Some(group.id),
         )
@@ -916,20 +917,23 @@ async fn test_group_balances_with_multiple_expenses() -> anyhow::Result<()> {
     let group_balances = auth_payer1.get_group_balances(group.id).await?;
     dbg!(&group_balances);
 
-    // With two expenses:
-    // Expense1: payer1 paid 300, each owes 100 -> payer1: +300, payer2: -100, member: -100
-    // Expense2: payer2 paid 200, each owes ~67 -> payer2: +200, payer1: -67, member: -67
-    // Net: payer1: +300-67=+233, payer2: -100+200-67=+33, member: -100-67=-167
-    // Settlement: member owes payer1 167, payer2 owes payer1 33
-    // Or: member -> payer1: 167, payer2 -> payer1: 33
-
-    // The balance should show the minimal settlement transfers
-    // There should be transfers that settle all debts
-    assert!(!group_balances.is_empty());
-
-    // Verify total sum of amounts equals zero (all debts cancel out)
-    let total: i64 = group_balances.iter().map(|b| b.amount).sum();
-    assert_eq!(total, 0);
+    for (user_id, expected_balance) in [(payer1.id, 133), (payer2.id, 34), (member.id, -167)] {
+        let received: i64 = group_balances
+            .iter()
+            .filter(|balance| balance.to == user_id)
+            .map(|balance| balance.amount)
+            .sum();
+        let sent: i64 = group_balances
+            .iter()
+            .filter(|balance| balance.from == user_id)
+            .map(|balance| balance.amount)
+            .sum();
+        assert_eq!(
+            received - sent,
+            expected_balance,
+            "Incorrect settlement for user {user_id}"
+        );
+    }
 
     // Cleanup
     auth_payer1.delete_group(group.id).await?;

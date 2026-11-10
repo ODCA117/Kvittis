@@ -1,14 +1,15 @@
 // User-related API handlers
 
 use axum::{Json, extract::State, http::StatusCode};
+use common::api::auth::LogoutResponse;
 use common::api::{
     ApiResponse, AuthorizedUserRequest, GetUserResponse, HandleFriendRequestResponse,
     LoginResponse, PendingFriendRequestResponse, RegisterResponse, SearchUserResponse,
     UnauthorizedUserRequest,
 };
-use tracing::{debug, info, warn};
+use tracing::{debug, info};
 
-use super::auth::{json_error, json_not_implemented, json_success};
+use super::auth::{json_error, json_success};
 use crate::api::Claims;
 use crate::state::AppState;
 
@@ -62,10 +63,15 @@ pub async fn authorized_user_handler(
     Json(payload): Json<AuthorizedUserRequest>,
 ) -> (StatusCode, Json<ApiResponse<serde_json::Value>>) {
     match payload {
-        AuthorizedUserRequest::Logout => {
-            warn!("Do not really know how to make this work yet");
-            json_not_implemented()
-        }
+        AuthorizedUserRequest::Logout => match state.logout_user(claims).await {
+            Ok(_) => {
+                let resp = LogoutResponse {
+                    msg: "Logged out user".to_string(),
+                };
+                json_success(StatusCode::OK, serde_json::to_value(resp).unwrap())
+            }
+            Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to logout"),
+        },
 
         AuthorizedUserRequest::Get => {
             // NOTE: Only get information if logged in user (or admin)

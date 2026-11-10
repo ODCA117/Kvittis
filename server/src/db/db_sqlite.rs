@@ -7,8 +7,11 @@ use sqlx::{
     sqlite::{SqlitePoolOptions, SqliteRow},
 };
 use tracing::{debug, info, warn};
+use uuid::Uuid;
 
-use crate::db::{ExpenseRow, FriendRequestRow, GroupMember, GroupRow, Store, UserRow};
+use crate::db::{
+    AccountSessionRow, ExpenseRow, FriendRequestRow, GroupMember, GroupRow, Store, UserRow,
+};
 
 pub struct SqliteStore {
     pool: SqlitePool,
@@ -415,6 +418,84 @@ impl Store for SqliteStore {
         )?;
 
         Ok(())
+    }
+
+    async fn add_account_session(&self, session: AccountSessionRow) -> Result<()> {
+        print_sql_result(
+            sqlx::query(
+                r#"
+                    INSERT INTO account_sessions (id, user_id, created_at, expires_at, revoked_at)
+                    VALUES ($1, $2, $3, $4, $5)
+                "#,
+            )
+            .bind(session.id)
+            .bind(session.user_id)
+            .bind(session.created_at)
+            .bind(session.expires_at)
+            .bind(session.revoked_at)
+            .execute(&self.pool)
+            .await,
+        )?;
+        Ok(())
+    }
+
+    async fn get_account_session(&self, id: Uuid) -> Result<AccountSessionRow> {
+        print_sql_result(
+            sqlx::query_as(
+                r#"
+                    SELECT * FROM account_sessions WHERE id = $1
+                "#,
+            )
+            .bind(id)
+            .fetch_one(&self.pool)
+            .await,
+        )
+    }
+
+    async fn remove_account_session(&self, id: Uuid) -> Result<()> {
+        print_sql_result(
+            sqlx::query(
+                r#"
+                    DELETE FROM account_sessions WHERE id = $1
+                "#,
+            )
+            .bind(id)
+            .execute(&self.pool)
+            .await,
+        )?;
+        Ok(())
+    }
+
+    async fn revoke_account_session(&self, id: Uuid, revoked_at: i64) -> Result<()> {
+        print_sql_result(
+            sqlx::query(
+                r#"
+                    UPDATE account_sessions
+                    SET revoked_at = $1
+                    WHERE id = $2
+                "#,
+            )
+            .bind(revoked_at)
+            .bind(id)
+            .execute(&self.pool)
+            .await,
+        )?;
+        Ok(())
+    }
+
+    async fn get_old_account_sessions(&self, time: i64) -> Result<Vec<Uuid>> {
+        print_sql_result(
+            sqlx::query_scalar::<_, Uuid>(
+                r#"
+                    SELECT id
+                    FROM account_sessions
+                    WHERE expires_at < $1
+                "#,
+            )
+            .bind(time)
+            .fetch_all(&self.pool)
+            .await,
+        )
     }
 
     // --- Groups ---

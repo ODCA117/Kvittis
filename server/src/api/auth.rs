@@ -37,7 +37,7 @@ pub fn json_success<T: Serialize>(
     )
 }
 
-pub fn json_not_implemented<T: Serialize>() -> (StatusCode, Json<common::api::ApiResponse<T>>) {
+pub fn _json_not_implemented<T: Serialize>() -> (StatusCode, Json<common::api::ApiResponse<T>>) {
     (
         StatusCode::INTERNAL_SERVER_ERROR,
         Json::<common::api::ApiResponse<T>>(common::api::ApiResponse::Error {
@@ -57,6 +57,7 @@ pub enum AuthError {
 #[derive(Debug, Serialize, Deserialize)]
 pub struct Claims {
     pub sub: Uuid,
+    pub sid: Uuid,
     pub app: String,
     pub exp: usize,
 }

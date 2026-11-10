@@ -1,3 +1,4 @@
+mod account_session;
 mod api;
 mod cli;
 mod db;
@@ -44,6 +45,17 @@ async fn main() -> anyhow::Result<()> {
         }
     };
 
+    let cleanup_state = state.clone();
+    let cleanup_task = tokio::spawn(async move {
+        let mut interval = tokio::time::interval(std::time::Duration::from_hours(5));
+        loop {
+            interval.tick().await;
+            if let Err(e) = cleanup_state.cleanup_account_sessions().await {
+                tracing::warn!(%e, "Account session cleanup failed");
+            }
+        }
+    });
+
     /* Install cryptop provider */
     // CryptoProvider::install_default(&'static self)
     // CryptoProvider::install_default().expect("Failed to install default CryptoProvider");
@@ -71,6 +83,14 @@ async fn main() -> anyhow::Result<()> {
             info!("Shutdown");
         })
         .await?;
+
+    cleanup_task.abort();
+
+    match cleanup_task.await {
+        Ok(()) => {}
+        Err(error) if error.is_cancelled() => {}
+        Err(error) => tracing::error!(%error, "Cleanup task failed"),
+    }
 
     Ok(())
 }
