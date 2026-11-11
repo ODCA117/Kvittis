@@ -102,7 +102,7 @@ impl IntoResponse for AuthError {
                 http::StatusCode::INTERNAL_SERVER_ERROR,
                 "Token creation error",
             ),
-            AuthError::InvalidToken => (http::StatusCode::BAD_REQUEST, "Invalid token"),
+            AuthError::InvalidToken => (http::StatusCode::UNAUTHORIZED, "Invalid token"),
         };
 
         let body = Json(json!({ "error": error_message }));
