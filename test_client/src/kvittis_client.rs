@@ -4,8 +4,8 @@ use common::{
         ApiResponse, AuthorizedUserRequest, BalanceEntry, BalanceRequest, CreateExpenseResponse,
         CreateGroupResponse, ExpenseRequest, FriendRequestResponse, GetExpenseResponse,
         GetGroupResponse, GetUserResponse, GroupBalance, GroupRequest, HandleFriendRequestResponse,
-        LoginResponse, PendingFriendRequestResponse, RegisterResponse, SearchUserResponse,
-        UnauthorizedUserRequest,
+        ListGroupResponse, LoginResponse, PendingFriendRequestResponse, RegisterResponse,
+        SearchUserResponse, UnauthorizedUserRequest,
     },
     ExpenseId, FriendRequestAction, FriendRequestId, GroupId, GroupRole, NewUser, UserId,
 };
@@ -373,10 +373,8 @@ impl AuthenticatedKvittisClient {
         }
     }
 
-    pub async fn search_group(&self, query: &str) -> Result<Vec<GetGroupResponse>> {
-        let req = GroupRequest::Search {
-            query: query.to_owned(),
-        };
+    pub async fn list_groups(&self) -> Result<Vec<ListGroupResponse>> {
+        let req = GroupRequest::List;
         let resp = self
             .http
             .post(self.url.join(GROUP_ENDPOINT)?)
@@ -385,7 +383,7 @@ impl AuthenticatedKvittisClient {
             .send()
             .await?;
         dbg!(&resp);
-        let resp = resp.json::<ApiResponse<Vec<GetGroupResponse>>>().await?;
+        let resp = resp.json::<ApiResponse<Vec<ListGroupResponse>>>().await?;
         match resp {
             ApiResponse::Success(r) => Ok(r),
             ApiResponse::Error { message } => Err(anyhow::anyhow!(message)),

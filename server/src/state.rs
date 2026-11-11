@@ -34,7 +34,7 @@ use common::{
     Expense, Group, GroupId, NewUser, User, UserId,
     api::{
         BalanceEntry, CreateExpenseRequest, CreateGroupRequest, DeleteExpenseRequest,
-        GetExpenseRequest, GroupBalance, NewGroupMemberRequest, TokenType,
+        GetExpenseRequest, GroupBalance, ListGroupResponse, NewGroupMemberRequest, TokenType,
     },
 };
 
@@ -547,9 +547,11 @@ impl AppState {
         }
     }
 
-    pub async fn get_group(&self, group_id: GroupId) -> Result<Option<Group>> {
-        let guard = self.data.write().await;
-        let group = guard.store.get_group(group_id).await?;
+    pub async fn get_group(&self, user: UserId, group_id: GroupId) -> Result<Option<Group>> {
+        let guard = self.data.read().await;
+        let Some(group) = guard.store.get_group_for_user(user, group_id).await? else {
+            return Ok(None);
+        };
 
         let members: Vec<(UserId, GroupRole)> = guard
             .store
@@ -583,21 +585,23 @@ impl AppState {
         Ok(Some(group))
     }
 
-    pub async fn search_groups(&self, query: &str) -> Result<Vec<Group>> {
-        let guard = self.data.write().await;
-        debug!("Search group");
-        let groups = guard.store.get_groups().await?;
-        let groups: Vec<Group> = groups
+    pub async fn list_groups(&self, user: UserId) -> Result<Vec<ListGroupResponse>> {
+        let guard = self.data.read().await;
+        let groups = guard.store.get_groups_for_user(user).await?;
+        Ok(groups
             .into_iter()
-            .filter(|g| g.name.contains(query))
-            .map(|g| g.into())
-            .collect();
-        debug!(
-            "Search groups with query '{}': found {} groups",
-            query,
-            groups.len()
-        );
-        Ok(groups)
+            .map(|row| {
+                let group: Group = row.into();
+                ListGroupResponse {
+                    id: group.id,
+                    name: group.name,
+                    last_settled: group.last_settled,
+                    created_at: group.created_at,
+                    updated_at: group.updated_at,
+                    deleted_at: group.deleted_at,
+                }
+            })
+            .collect())
     }
 
     pub async fn new_group_member(&self, req: NewGroupMemberRequest) -> Result<()> {
@@ -746,7 +750,7 @@ impl From<GroupRow> for Group {
             members: vec![],
             created_at: DateTime::from_timestamp_millis(value.created_at)
                 .unwrap_or(DateTime::<Utc>::MIN_UTC),
-            updated_at: DateTime::from_timestamp_millis(value.created_at)
+            updated_at: DateTime::from_timestamp_millis(value.updated_at)
                 .unwrap_or(DateTime::<Utc>::MIN_UTC),
             deleted_at,
         }

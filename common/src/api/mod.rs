@@ -19,7 +19,8 @@ pub use users::{AuthorizedUserRequest, GetUserResponse, SearchUserResponse};
 
 // Group types
 pub use groups::{
-    CreateGroupRequest, CreateGroupResponse, GetGroupResponse, GroupRequest, NewGroupMemberRequest,
+    CreateGroupRequest, CreateGroupResponse, GetGroupResponse, GroupRequest, ListGroupResponse,
+    NewGroupMemberRequest,
 };
 
 // Expense types

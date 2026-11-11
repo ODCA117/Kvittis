@@ -201,6 +201,14 @@ impl Store for FileStore {
         Ok(self.state.read().await.groups.values().cloned().collect())
     }
 
+    async fn get_groups_for_user(&self, _user: UserId) -> Result<Vec<GroupRow>> {
+        todo!()
+    }
+
+    async fn get_group_for_user(&self, _user: UserId, _id: GroupId) -> Result<Option<GroupRow>> {
+        todo!()
+    }
+
     async fn add_group_member(
         &self,
         _user: UserId,

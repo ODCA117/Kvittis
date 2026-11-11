@@ -36,9 +36,8 @@ pub async fn group_handler(
         }
 
         GroupRequest::Get { group_id } => {
-            // FIXME: Only get groups user is member of
             debug!("Get group: {:?}", group_id);
-            match state.get_group(group_id).await {
+            match state.get_group(claims.sub, group_id).await {
                 Ok(Some(g)) => {
                     let resp = GetGroupResponse {
                         id: g.id,
@@ -68,26 +67,11 @@ pub async fn group_handler(
             }
         }
 
-        GroupRequest::Search { query } => {
-            // FIXME: Remove
-            debug!("Search groups: {:?}", query);
-            match state.search_groups(&query).await {
-                Ok(groups) => {
-                    let resp: Vec<GetGroupResponse> = groups
-                        .into_iter()
-                        .map(|g| GetGroupResponse {
-                            id: g.id,
-                            name: g.name,
-                            last_settled: g.last_settled,
-                            members: g.members,
-                            created_at: g.created_at,
-                            updated_at: g.updated_at,
-                            deleted_at: g.deleted_at,
-                        })
-                        .collect();
-                    json_success(StatusCode::OK, serde_json::to_value(resp).unwrap())
-                }
-                Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to search groups"),
+        GroupRequest::List => {
+            debug!("List groups: user={:?}", claims.sub);
+            match state.list_groups(claims.sub).await {
+                Ok(groups) => json_success(StatusCode::OK, serde_json::to_value(groups).unwrap()),
+                Err(_) => json_error(StatusCode::INTERNAL_SERVER_ERROR, "Failed to list groups"),
             }
         }
 
