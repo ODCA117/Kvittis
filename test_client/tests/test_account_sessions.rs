@@ -57,12 +57,8 @@ async fn assert_session_rejected(
         .send()
         .await?;
 
-    // Authentication currently returns 400; keep accepting 401 when that FIXME is fixed.
     assert!(
-        matches!(
-            response.status(),
-            StatusCode::BAD_REQUEST | StatusCode::UNAUTHORIZED
-        ),
+        response.status() == StatusCode::UNAUTHORIZED,
         "Expected authentication rejection, got {}",
         response.status()
     );
