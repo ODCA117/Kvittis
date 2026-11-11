@@ -329,7 +329,7 @@ async fn test_add_user_to_group() -> anyhow::Result<()> {
 }
 
 #[tokio::test]
-async fn test_get_group_by_name() -> anyhow::Result<()> {
+async fn test_list_groups() -> anyhow::Result<()> {
     let client = UnauthClient::new(BASE_URL)?;
     let new_user = create_new_user("get_group_by_name_owner".to_owned());
     let owner = client.register_user(new_user.clone()).await?.user;
@@ -339,15 +339,10 @@ async fn test_get_group_by_name() -> anyhow::Result<()> {
     let group_name = "get_group_by_name_test_group";
     let group = auth_owner.create_group(group_name).await?;
 
-    let resp = auth_owner.search_group(group_name).await?;
+    let resp = auth_owner.list_groups().await?;
     let ids: Vec<_> = resp.iter().map(|g| g.id).collect();
 
     assert!(ids.contains(&group.id));
-
-    let resp = auth_owner.search_group("not_found_name").await?;
-    let ids: Vec<_> = resp.iter().map(|g| g.id).collect();
-
-    assert!(!ids.contains(&group.id));
 
     // Cleanup
     auth_owner.delete_group(group.id).await?;

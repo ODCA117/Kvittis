@@ -21,6 +21,16 @@ pub struct GetGroupResponse {
     pub deleted_at: Option<DateTime<Utc>>,
 }
 
+#[derive(Serialize, Deserialize, Debug)]
+pub struct ListGroupResponse {
+    pub id: GroupId,
+    pub name: String,
+    pub last_settled: DateTime<Utc>,
+    pub created_at: DateTime<Utc>,
+    pub updated_at: DateTime<Utc>,
+    pub deleted_at: Option<DateTime<Utc>>,
+}
+
 // Internal structs used by the state/db layer
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -50,9 +60,7 @@ pub enum GroupRequest {
     Delete {
         group_id: GroupId,
     },
-    Search {
-        query: String,
-    },
+    List,
     AddMember {
         group_id: GroupId,
         new_member: UserId,

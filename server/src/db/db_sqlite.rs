@@ -553,6 +553,43 @@ impl Store for SqliteStore {
         )
     }
 
+    async fn get_groups_for_user(&self, user: UserId) -> Result<Vec<GroupRow>> {
+        print_sql_result(
+            sqlx::query_as(
+                r#"
+                    SELECT g.* FROM groups AS g
+                    WHERE g.deleted_at IS NULL
+                      AND EXISTS (
+                          SELECT 1 FROM group_members AS gm
+                          WHERE gm.group_id = g.id AND gm.user_id = $1
+                      )
+                "#,
+            )
+            .bind(user)
+            .fetch_all(&self.pool)
+            .await,
+        )
+    }
+
+    async fn get_group_for_user(&self, user: UserId, id: GroupId) -> Result<Option<GroupRow>> {
+        print_sql_result(
+            sqlx::query_as(
+                r#"
+                    SELECT g.* FROM groups AS g
+                    WHERE g.id = $1 AND g.deleted_at IS NULL
+                      AND EXISTS (
+                          SELECT 1 FROM group_members AS gm
+                          WHERE gm.group_id = g.id AND gm.user_id = $2
+                      )
+                "#,
+            )
+            .bind(id)
+            .bind(user)
+            .fetch_optional(&self.pool)
+            .await,
+        )
+    }
+
     async fn delete_group(&self, id: GroupId) -> Result<()> {
         // Remove the group
         let _ = self.get_group(id).await?;
