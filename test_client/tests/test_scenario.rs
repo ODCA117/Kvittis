@@ -82,7 +82,8 @@ async fn tc2_user_balances_basic_split() -> anyhow::Result<()> {
     assert_eq!(entry_a.amount, 50, "B owes A 50");
 
     // UserBalances(B): entry for A with amount -50
-    let balances_b = auth_a.get_user_balances(b.id).await?;
+    let auth_b = client.login_user(b.username, PASSWORD.to_owned()).await?;
+    let balances_b = auth_b.get_user_balances(b.id).await?;
     let entry_b = balances_b
         .iter()
         .find(|e| e.other == a.id)
@@ -92,7 +93,6 @@ async fn tc2_user_balances_basic_split() -> anyhow::Result<()> {
     // Cleanup
     auth_a.delete_expense(e1.id).await?;
     auth_a.delete_user().await?;
-    let auth_b = client.login_user(b.username, PASSWORD.to_owned()).await?;
     auth_b.delete_user().await?;
     Ok(())
 }

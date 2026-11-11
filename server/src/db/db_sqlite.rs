@@ -742,13 +742,10 @@ impl Store for SqliteStore {
                         e.description       AS description,
                         e.group_id          AS group_id,
                         e.created_at        AS created_at,
-                        u.id                AS user_id,
-                        u.username          AS username
+                        ep.user_id          AS user_id
                     FROM expenses e
                     LEFT JOIN expense_participants ep
                         ON e.id = ep.expense_id
-                    LEFT JOIN users u
-                        ON ep.user_id = u.id
                     WHERE e.id = $1
                     ORDER BY e.id;
                 "#,
@@ -758,29 +755,7 @@ impl Store for SqliteStore {
             .await,
         )?;
 
-        let mut map = HashMap::new();
-        for r in expense.iter() {
-            let id: ExpenseId = r.get("expense_id");
-            let payer: UserId = r.get("payer");
-            let amount: i64 = r.get("amount");
-            let description: Option<String> = r.try_get("description").ok();
-            let group_id: Option<GroupId> = r.try_get("group_id").ok();
-            let created_at: i64 = r.get("created_at");
-            let user_id: UserId = r.get("user_id");
-            let _username: String = r.get("username");
-            let e = map.entry(id).or_insert(ExpenseRow {
-                id,
-                payer,
-                participants: vec![],
-                amount,
-                description,
-                group_id,
-                created_at,
-            });
-            e.participants.push(user_id);
-        }
-
-        Ok(map.into_values().next())
+        Ok(build_expense_rows(expense).into_iter().next())
     }
 
     async fn list_expenses_for_user(&self, user_id: UserId) -> Result<Vec<ExpenseRow>> {

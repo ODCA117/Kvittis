@@ -57,6 +57,25 @@ impl Keys {
     }
 }
 
+#[derive(Debug)]
+pub enum AccessError {
+    ExpenseNotFound,
+    GroupNotFound,
+    Forbidden,
+}
+
+impl std::fmt::Display for AccessError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(match self {
+            Self::ExpenseNotFound => "Expense not found",
+            Self::GroupNotFound => "Group not found",
+            Self::Forbidden => "Not allowed",
+        })
+    }
+}
+
+impl std::error::Error for AccessError {}
+
 struct AppStateData {
     store: Box<dyn Store>,
 }
@@ -66,6 +85,30 @@ impl AppStateData {
         Self {
             store: Box::new(store),
         }
+    }
+
+    async fn can_access_expense(&self, user: UserId, expense: &ExpenseRow) -> Result<bool> {
+        if expense.payer == user || expense.participants.contains(&user) {
+            return Ok(true);
+        }
+        match expense.group_id {
+            Some(group_id) => Ok(self
+                .store
+                .get_group_for_user(user, group_id)
+                .await?
+                .is_some()),
+            None => Ok(false),
+        }
+    }
+
+    async fn visible_expenses(&self, user: UserId, rows: Vec<ExpenseRow>) -> Result<Vec<Expense>> {
+        let mut expenses = Vec::new();
+        for row in rows {
+            if self.can_access_expense(user, &row).await? {
+                expenses.push(row.into());
+            }
+        }
+        Ok(expenses)
     }
 }
 
@@ -337,8 +380,24 @@ impl AppState {
         Ok(())
     }
 
-    pub async fn create_expense(&self, expense_req: CreateExpenseRequest) -> Result<Expense> {
+    pub async fn create_expense(
+        &self,
+        user: UserId,
+        expense_req: CreateExpenseRequest,
+    ) -> Result<Expense> {
         let guard = self.data.write().await;
+        if let Some(group_id) = expense_req.group_id {
+            if guard
+                .store
+                .get_group_for_user(user, group_id)
+                .await?
+                .is_none()
+            {
+                return Err(AccessError::Forbidden.into());
+            }
+        } else if expense_req.payer != user && !expense_req.participants.contains(&user) {
+            return Err(AccessError::Forbidden.into());
+        }
         let expense = Expense {
             id: Uuid::new_v4(),
             payer: expense_req.payer,
@@ -352,39 +411,73 @@ impl AppState {
         Ok(stored.into())
     }
 
-    pub async fn get_expense(&self, expense_req: GetExpenseRequest) -> Result<Expense> {
+    pub async fn get_expense(
+        &self,
+        user: UserId,
+        expense_req: GetExpenseRequest,
+    ) -> Result<Expense> {
+        let guard = self.data.read().await;
+        let stored = guard
+            .store
+            .get_expense(expense_req.id)
+            .await?
+            .ok_or(AccessError::ExpenseNotFound)?;
+        if !guard.can_access_expense(user, &stored).await? {
+            return Err(AccessError::ExpenseNotFound.into());
+        }
+        Ok(stored.into())
+    }
+
+    pub async fn delete_expense(
+        &self,
+        user: UserId,
+        expense_req: DeleteExpenseRequest,
+    ) -> Result<()> {
         let guard = self.data.write().await;
         let stored = guard
             .store
             .get_expense(expense_req.id)
             .await?
-            .ok_or_else(|| anyhow!("Expense not found"))?;
-        Ok(stored.into())
-    }
-
-    pub async fn delete_expense(&self, expense_req: DeleteExpenseRequest) -> Result<()> {
-        let guard = self.data.write().await;
+            .ok_or(AccessError::ExpenseNotFound)?;
+        if !guard.can_access_expense(user, &stored).await? {
+            return Err(AccessError::ExpenseNotFound.into());
+        }
         guard.store.delete_expense(expense_req.id).await?;
         Ok(())
     }
 
-    pub async fn list_expenses_for_user(&self, user_id: UserId) -> Result<Vec<Expense>> {
+    pub async fn list_expenses_for_user(
+        &self,
+        user: UserId,
+        user_id: UserId,
+    ) -> Result<Vec<Expense>> {
         let guard = self.data.read().await;
         let rows = guard.store.list_expenses_for_user(user_id).await?;
-        Ok(rows.into_iter().map(|r| r.into()).collect())
+        guard.visible_expenses(user, rows).await
     }
 
-    pub async fn list_expenses_for_group(&self, group_id: GroupId) -> Result<Vec<Expense>> {
+    pub async fn list_expenses_for_group(
+        &self,
+        user: UserId,
+        group_id: GroupId,
+    ) -> Result<Vec<Expense>> {
         let guard = self.data.read().await;
         let rows = guard.store.list_expenses_for_group(group_id).await?;
-        Ok(rows.into_iter().map(|r| r.into()).collect())
+        guard.visible_expenses(user, rows).await
     }
 
     /// Returns per-counterparty net balances for non-group expenses only.
     /// Positive amount → counterparty owes `user_id`.
     /// Negative amount → `user_id` owes counterparty.
-    pub async fn get_user_non_group_balances(&self, user_id: UserId) -> Result<Vec<BalanceEntry>> {
-        let expenses = self.list_expenses_for_user(user_id).await?;
+    pub async fn get_user_non_group_balances(
+        &self,
+        user: UserId,
+        user_id: UserId,
+    ) -> Result<Vec<BalanceEntry>> {
+        if user != user_id {
+            return Err(AccessError::Forbidden.into());
+        }
+        let expenses = self.list_expenses_for_user(user, user_id).await?;
         let non_group: Vec<Expense> = expenses
             .into_iter()
             .filter(|e| e.group_id.is_none())
@@ -435,8 +528,29 @@ impl AppState {
 
     /// Returns the minimal settlement transfers for a group.
     /// All group expenses are included regardless of which members are involved.
-    pub async fn get_group_balance_overview(&self, group_id: GroupId) -> Result<Vec<GroupBalance>> {
-        let expenses = self.list_expenses_for_group(group_id).await?;
+    pub async fn get_group_balance_overview(
+        &self,
+        user: UserId,
+        group_id: GroupId,
+    ) -> Result<Vec<GroupBalance>> {
+        let expenses: Vec<Expense> = {
+            let guard = self.data.read().await;
+            if guard
+                .store
+                .get_group_for_user(user, group_id)
+                .await?
+                .is_none()
+            {
+                return Err(AccessError::GroupNotFound.into());
+            }
+            guard
+                .store
+                .list_expenses_for_group(group_id)
+                .await?
+                .into_iter()
+                .map(Into::into)
+                .collect()
+        };
 
         // Compute net position per member: net = paid − owed_share
         let mut net: HashMap<UserId, i64> = HashMap::new();

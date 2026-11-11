@@ -11,7 +11,7 @@ use serde_json::json;
 use tracing::{info, warn};
 use uuid::Uuid;
 
-use crate::state::AppState;
+use crate::state::{AccessError, AppState};
 
 // Helper function for error responses (generic over T)
 pub fn json_error<T: Serialize>(
@@ -24,6 +24,22 @@ pub fn json_error<T: Serialize>(
             message: message.to_string(),
         }),
     )
+}
+
+pub fn json_state_error<T: Serialize>(
+    error: anyhow::Error,
+    message: &str,
+) -> (StatusCode, Json<common::api::ApiResponse<T>>) {
+    if let Some(access_error) = error.downcast_ref::<AccessError>() {
+        let status = match access_error {
+            AccessError::ExpenseNotFound | AccessError::GroupNotFound => StatusCode::NOT_FOUND,
+            AccessError::Forbidden => StatusCode::FORBIDDEN,
+        };
+        json_error(status, &access_error.to_string())
+    } else {
+        warn!(%error, "{message}");
+        json_error(StatusCode::INTERNAL_SERVER_ERROR, message)
+    }
 }
 
 // Helper function for success responses
